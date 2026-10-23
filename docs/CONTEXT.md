@@ -123,7 +123,9 @@ Each video project bundles:
 | **Idea** | A video topic not yet started, kept in the idea list with a rating from 1 to 10 |
 | **Video project** | A video in production, bundled with all its content |
 | **Stage** | A step in the video lifecycle, i.e. a column on the Kanban board |
-| **Section** | Part of the script (story sketch, hook, intro, main part, outro) |
+| **Section** | Top-level part of the script, always of one fixed section kind; a script holds at most one section of each kind |
+| **Section kind** | One of: opening story sketch, hook, intro, main part, outro, closing story sketch |
+| **Subsection** | Freely titled part of the main part, one level deep; only the main part has subsections |
 | **Story sketch** | Short narrated scene at the start and end of every video |
 | **Stage direction** | Marker in the script where an image is shown; not spoken |
 | **Source** | Website, book, PDF, YouTube video or paper linked to a video |
