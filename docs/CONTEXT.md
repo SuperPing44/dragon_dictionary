@@ -122,7 +122,7 @@ Each video project bundles:
 |---|---|
 | **Idea** | A video topic not yet started, kept in the idea list with a rating from 1 to 10 |
 | **Video project** | A video in production, bundled with all its content |
-| **Stage** | A step in the video lifecycle, i.e. a column on the Kanban board |
+| **Stage** | A step in the video lifecycle, i.e. a column on the Kanban board. The Idea stage is the idea list itself: a video project starts in Research and never returns to Idea |
 | **Section** | Top-level part of the script, always of one fixed section kind; a script holds at most one section of each kind |
 | **Section kind** | One of: opening story sketch, hook, intro, main part, outro, closing story sketch |
 | **Subsection** | Freely titled part of the main part, one level deep; only the main part has subsections |
@@ -130,5 +130,5 @@ Each video project bundles:
 | **Stage direction** | Marker in the script where an image is shown; not spoken |
 | **Source** | Website, book, PDF, YouTube video or paper linked to a video |
 | **Source list** | Automatically generated link list of sources for the video description |
-| **Category** | Topic of an idea or video (e.g. "Norse Mythology"), used for filtering |
+| **Category** | Topic of an idea or video (e.g. "Norse Mythology") with a colour, used for filtering; one shared list for ideas and video projects, names unique ignoring case |
 | **Archive** | Collection of published videos, searchable, with a link to the YouTube video |
