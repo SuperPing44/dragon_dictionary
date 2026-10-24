@@ -1,0 +1,8 @@
+/* PROTOTYPE — throwaway. Tiptap placeholder text. */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: #a3a3a3;
+  pointer-events: none;
+}
