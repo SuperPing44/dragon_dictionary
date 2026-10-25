@@ -96,3 +96,11 @@ export function moveItem<T>(list: T[], from: number, to: number): T[] {
   next.splice(to, 0, item);
   return next;
 }
+
+/** How many stage directions (images) a section has. */
+export function countDirections(doc: DocNode): number {
+  return (
+    (doc.type === "stageDirection" ? 1 : 0) +
+    (doc.content ?? []).reduce((n, c) => n + countDirections(c), 0)
+  );
+}
