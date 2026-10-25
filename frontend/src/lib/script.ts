@@ -88,3 +88,11 @@ export function canonicalInsertIndex(
 export function missingKinds(existing: SectionKind[]): SectionKind[] {
   return SECTION_KINDS.filter((k) => !existing.includes(k));
 }
+
+/** The list with one item moved from one index to another. */
+export function moveItem<T>(list: T[], from: number, to: number): T[] {
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
