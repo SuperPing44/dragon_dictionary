@@ -73,3 +73,19 @@ export function ideaCountLine(n: number): string {
   const capitalised = words.charAt(0).toUpperCase() + words.slice(1);
   return `${capitalised} ${n === 1 ? "idea" : "ideas"} sleeping in the hoard`;
 }
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** How many items use a category, e.g. "4 ideas, 2 video projects". */
+export function usageLine(ideas: number, videoProjects: number): string {
+  const parts = [
+    ideas > 0 && plural(ideas, "idea"),
+    videoProjects > 0 && plural(videoProjects, "video project"),
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "unused";
+}
+
+/** The same counts for a sentence, e.g. "7 ideas and 3 video projects". */
+export function usageSentence(ideas: number, videoProjects: number): string {
+  return usageLine(ideas, videoProjects).replace(", ", " and ");
+}

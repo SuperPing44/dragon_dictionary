@@ -3,10 +3,15 @@ import {
   addIdeaCategory,
   categoriesByIdea,
   createCategory,
+  deleteCategory,
   findCategoryByName,
   listCategories,
+  listCategoriesWithUsage,
+  mergeCategory,
   nextCategoryColour,
   removeIdeaCategory,
+  renameCategory,
+  setCategoryColour,
 } from "./categories";
 import { type Db, openDb } from "./connection";
 import { createIdea, deleteIdea, listIdeas } from "./ideas";
@@ -150,5 +155,99 @@ describe("listIdeas category filter", () => {
       "Yggdrasil games",
     ]);
     expect(titles([])).toHaveLength(5);
+  });
+});
+
+describe("category management", () => {
+  const link = (title: string, ...cats: { id: string }[]) => {
+    const idea = createIdea(db, title, tick());
+    for (const c of cats) addIdeaCategory(db, idea?.id ?? "", c.id);
+    return idea?.id ?? "";
+  };
+  const namesOf = (ideaId: string) =>
+    categoriesByIdea(db, [ideaId])
+      .get(ideaId)
+      ?.map((c) => c.name) ?? [];
+
+  it("counts how many ideas use each category", () => {
+    const norse = make("Norse", "violet");
+    const pop = make("Pop", "fuchsia");
+    make("Unused", "slate");
+    link("Loki", norse, pop);
+    link("Fenrir", norse);
+
+    expect(
+      listCategoriesWithUsage(db).map((c) => [
+        c.name,
+        c.ideas,
+        c.videoProjects,
+      ]),
+    ).toEqual([
+      ["Norse", 2, 0],
+      ["Pop", 1, 0],
+      ["Unused", 0, 0],
+    ]);
+  });
+
+  it("changes a colour", () => {
+    const norse = make("Norse", "violet");
+    setCategoryColour(db, norse.id, "amber");
+    expect(listCategories(db)[0].colour).toBe("amber");
+    expect(() =>
+      setCategoryColour(db, norse.id, "gold" as CategoryColour),
+    ).toThrow();
+  });
+
+  it("renames everywhere, including a change of case", () => {
+    const norse = make("Norse", "violet");
+    const loki = link("Loki", norse);
+    expect(renameCategory(db, norse.id, " Norse Mythology ")).toEqual({
+      ok: true,
+    });
+    expect(renameCategory(db, norse.id, "norse mythology")).toEqual({
+      ok: true,
+    });
+    expect(namesOf(loki)).toEqual(["norse mythology"]);
+  });
+
+  it("refuses a name another category has and reports it", () => {
+    const norse = make("Norse Mythology", "violet");
+    const myths = make("Norse Myths", "teal");
+    expect(renameCategory(db, myths.id, "NORSE MYTHOLOGY")).toEqual({
+      ok: false,
+      conflict: norse,
+    });
+    expect(listCategories(db).map((c) => c.name)).toEqual([
+      "Norse Mythology",
+      "Norse Myths",
+    ]);
+    expect(() => renameCategory(db, myths.id, "  ")).toThrow();
+  });
+
+  it("merges links, keeping one where an item had both", () => {
+    const norse = make("Norse Mythology", "violet");
+    const myths = make("Norse Myths", "teal");
+    const both = link("Loki", norse, myths);
+    const onlyMyths = link("Fenrir", myths);
+    const onlyNorse = link("Odin", norse);
+
+    mergeCategory(db, myths.id, norse.id);
+
+    expect(listCategories(db).map((c) => c.name)).toEqual(["Norse Mythology"]);
+    expect(namesOf(both)).toEqual(["Norse Mythology"]);
+    expect(namesOf(onlyMyths)).toEqual(["Norse Mythology"]);
+    expect(namesOf(onlyNorse)).toEqual(["Norse Mythology"]);
+  });
+
+  it("deletes a category in use; the ideas keep everything else", () => {
+    const norse = make("Norse", "violet");
+    const pop = make("Pop", "fuchsia");
+    const loki = link("Loki", norse, pop);
+
+    deleteCategory(db, pop.id);
+
+    expect(listCategories(db).map((c) => c.name)).toEqual(["Norse"]);
+    expect(namesOf(loki)).toEqual(["Norse"]);
+    expect(listIdeas(db).map((i) => i.title)).toEqual(["Loki"]);
   });
 });
