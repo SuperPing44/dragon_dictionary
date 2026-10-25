@@ -2,6 +2,7 @@
 
 > The build-ready spec for the first version of Dragon Dictionary. It gathers the decisions made on the map [Map: Dragon Dictionary MVP spec](https://github.com/SuperPing44/dragon_dictionary/issues/1). Each section links the ticket that holds the full reasoning.
 > Concept and glossary: [`docs/CONTEXT.md`](../CONTEXT.md). Terms in **bold** are glossary terms.
+> Status: **approved** on 2026-10-25, together with the Figma mockups.
 > Design: [Figma mockups](https://www.figma.com/design/noDRCbSEOAeXATPnnjUqrJ/Untitled?node-id=0-1), page *MVP screens*.
 
 ---
@@ -350,9 +351,9 @@ Approved in [Design mockups in Figma for the MVP screens](https://github.com/Sup
   6. Source library
   7. New source, opened from a project
 
-## 7. Spec-time assumptions
+## 7. Spec-time decisions
 
-These were not decided on a ticket. They are filled in here so the spec is complete. Confirm or change them when reviewing.
+These were not decided on a ticket. They were filled in when the spec was written and confirmed when the spec was approved (2026-10-25).
 
 1. **Saving:** everything saves automatically. Script text saves on change, debounced to about 1 s, together with its `word_count`. There is no Save button except on the source form.
 2. **Video project list order:** most recently updated first, with no sort or filter controls (as in the mockup).
