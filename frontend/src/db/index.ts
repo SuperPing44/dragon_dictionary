@@ -3,7 +3,8 @@ import * as categoryQueries from "./categories";
 import { getDb } from "./connection";
 import * as ideaQueries from "./ideas";
 import * as projectQueries from "./projects";
-import type { Category, CategoryColour } from "./schema";
+import type { Category, CategoryColour, SectionKind } from "./schema";
+import * as sectionQueries from "./sections";
 
 // Every query goes through here. better-sqlite3 is synchronous, so each read
 // awaits io() first; otherwise cacheComponents would prerender it.
@@ -167,6 +168,21 @@ export async function removeProjectCategory(
 export async function deleteVideoProject(id: string) {
   await io();
   projectQueries.deleteVideoProject(getDb(), id);
+}
+
+export async function saveSectionContent(sectionId: string, content: string) {
+  await io();
+  return sectionQueries.saveSectionContent(getDb(), sectionId, content);
+}
+
+export async function addSection(projectId: string, kind: SectionKind) {
+  await io();
+  return sectionQueries.addSection(getDb(), projectId, kind);
+}
+
+export async function removeSection(sectionId: string) {
+  await io();
+  sectionQueries.removeSection(getDb(), sectionId);
 }
 
 export type SidebarCounts = {
