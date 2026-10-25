@@ -2,13 +2,13 @@
 
 /*
  * Tokens from the Figma variable collection "Dragon colours".
- * Figma name → token: bg/base → base, surface/N → surface-N,
+ * Figma name → token: bg/base → canvas, surface/N → surface-N,
  * border/* → border-*, accent/primary → accent, accent/* → accent-*,
  * text/primary → fg, text/muted → fg-muted, text/faint → fg-faint,
  * category/* → category-*. Dark theme only.
  */
 @theme {
-  --color-base: #0b0811;
+  --color-canvas: #0b0811;
   --color-surface-1: #140e1d;
   --color-surface-2: #1c1528;
   --color-surface-3: #271d38;
@@ -48,7 +48,7 @@ html {
 }
 
 body {
-  background-color: var(--color-base);
+  background-color: var(--color-canvas);
   /* The soft violet glow at the top right, over the faint starfield. */
   background-image:
     radial-gradient(

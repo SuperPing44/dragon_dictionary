@@ -3,7 +3,14 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type Db, openDb, resolveDataDir } from "./connection";
-import { countIdeas, createIdea, listIdeas } from "./ideas";
+import {
+  countIdeas,
+  createIdea,
+  deleteIdea,
+  getIdea,
+  listIdeas,
+  updateIdea,
+} from "./ideas";
 import { idea } from "./schema";
 
 let db: Db;
@@ -70,6 +77,103 @@ describe("listIdeas", () => {
       "unrated new",
       "unrated old",
     ]);
+  });
+});
+
+describe("listIdeas sorts", () => {
+  const at = (day: number) =>
+    `2026-10-${String(day).padStart(2, "0")}T00:00:00.000Z`;
+
+  beforeEach(() => {
+    const rows = [
+      { title: "beta", rating: 3, day: 1 },
+      { title: "Alpha", rating: null, day: 2 },
+      { title: "alpha", rating: 9, day: 3 },
+      { title: "Gamma", rating: 3, day: 4 },
+    ];
+    for (const [i, r] of rows.entries()) {
+      db.insert(idea)
+        .values({
+          id: `id-${i}`,
+          title: r.title,
+          rating: r.rating,
+          created: at(r.day),
+          updated: at(r.day),
+        })
+        .run();
+    }
+  });
+
+  it("newest first", () => {
+    expect(listIdeas(db, "newest").map((i) => i.title)).toEqual([
+      "Gamma",
+      "alpha",
+      "Alpha",
+      "beta",
+    ]);
+  });
+
+  it("title A–Z ignoring case, ties to the newest", () => {
+    expect(listIdeas(db, "title").map((i) => i.title)).toEqual([
+      "alpha",
+      "Alpha",
+      "beta",
+      "Gamma",
+    ]);
+  });
+});
+
+describe("updateIdea", () => {
+  const created = new Date("2026-10-01T00:00:00.000Z");
+  const later = new Date("2026-10-02T00:00:00.000Z");
+  let id: string;
+
+  beforeEach(() => {
+    id = createIdea(db, "Krampus", created)?.id ?? "";
+  });
+
+  it("changes title and note and bumps updated", () => {
+    const updated = updateIdea(
+      db,
+      id,
+      { title: " Krampus night ", note: "Alpine processions" },
+      later,
+    );
+    expect(updated).toMatchObject({
+      title: "Krampus night",
+      note: "Alpine processions",
+      created: created.toISOString(),
+      updated: later.toISOString(),
+    });
+  });
+
+  it("rejects a blank title and keeps the old one", () => {
+    expect(() => updateIdea(db, id, { title: "  " })).toThrow();
+    expect(getIdea(db, id)?.title).toBe("Krampus");
+  });
+
+  it("stores a blank note as no note", () => {
+    updateIdea(db, id, { note: "something" });
+    expect(updateIdea(db, id, { note: "   " })?.note).toBeNull();
+  });
+
+  it("sets, changes and clears the rating", () => {
+    expect(updateIdea(db, id, { rating: 1 })?.rating).toBe(1);
+    expect(updateIdea(db, id, { rating: 10 })?.rating).toBe(10);
+    expect(updateIdea(db, id, { rating: null })?.rating).toBeNull();
+  });
+
+  it.each([0, 11, 4.5, Number.NaN])("rejects rating %s", (rating) => {
+    expect(() => updateIdea(db, id, { rating })).toThrow();
+  });
+});
+
+describe("deleteIdea", () => {
+  it("removes the idea permanently", () => {
+    const keep = createIdea(db, "keep");
+    const gone = createIdea(db, "gone");
+    deleteIdea(db, gone?.id ?? "");
+    expect(listIdeas(db)).toEqual([keep]);
   });
 });
 
