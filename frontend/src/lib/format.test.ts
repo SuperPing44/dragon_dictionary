@@ -5,8 +5,10 @@ import {
   ideaCountLine,
   numberInWords,
   projectCountLine,
+  speakingTime,
   usageLine,
   usageSentence,
+  wordsLine,
 } from "./format";
 
 describe("formatDay", () => {
@@ -99,5 +101,30 @@ describe("projectCountLine", () => {
     expect(projectCountLine(5)).toBe(
       "Five tales in the making — most recently touched first",
     );
+  });
+});
+
+describe("speakingTime", () => {
+  it.each([
+    [0, 150, "≈ 0:00"],
+    [150, 150, "≈ 1:00"],
+    [2180, 150, "≈ 14:30"], // 872 s → nearest 5 s is 870 s
+    [462, 150, "≈ 3:05"], // 184.8 s → 185 s
+    [6, 150, "≈ 0:00"], // 2.4 s → 0 s
+    [7, 150, "≈ 0:05"], // 2.8 s → 5 s
+    [9000, 150, "≈ 1:00:00"],
+    [9500, 150, "≈ 1:03:20"],
+    [8990, 150, "≈ 59:55"], // 3596 s → 3595 s, still under an hour
+    [300, 300, "≈ 1:00"],
+    [300, 60, "≈ 5:00"],
+  ])("%i words at %i wpm → %s", (words, rate, time) => {
+    expect(speakingTime(words, rate)).toBe(time);
+  });
+});
+
+describe("wordsLine", () => {
+  it("pluralises and groups thousands", () => {
+    expect(wordsLine(1)).toBe("1 word");
+    expect(wordsLine(2180)).toBe("2,180 words");
   });
 });

@@ -4,8 +4,8 @@ import { Suspense } from "react";
 import { CategoryChip } from "@/components/category-chip";
 import { PageHeader } from "@/components/page-header";
 import { StagePill } from "@/components/stage-pill";
-import { listVideoProjects } from "@/db";
-import { editedLine, projectCountLine } from "@/lib/format";
+import { getSpeakingRate, listVideoProjects } from "@/db";
+import { editedLine, projectCountLine, speakingTime } from "@/lib/format";
 
 const HEAD =
   "font-label font-semibold text-[11px] text-fg-muted uppercase tracking-[1.1px]";
@@ -20,6 +20,7 @@ export default function ProjectsPage() {
 
 async function ProjectList() {
   const projects = await listVideoProjects();
+  const rate = await getSpeakingRate();
   const now = new Date();
   return (
     <>
@@ -38,6 +39,7 @@ async function ProjectList() {
             <p className={`${HEAD} flex-1`}>Title</p>
             <p className={`${HEAD} w-[150px]`}>Stage</p>
             <p className={`${HEAD} w-[300px]`}>Categories</p>
+            <p className={`${HEAD} w-[100px]`}>Length</p>
             <p className={`${HEAD} w-[90px]`}>Sources</p>
             <span className="w-[18px]" />
           </div>
@@ -68,6 +70,13 @@ async function ProjectList() {
                       />
                     ))}
                   </div>
+                  <p
+                    className={`w-[100px] font-label font-medium text-sm ${
+                      p.wordCount > 0 ? "text-fg" : "text-fg-faint"
+                    }`}
+                  >
+                    {speakingTime(p.wordCount, rate)}
+                  </p>
                   <div className="flex w-[90px] items-center gap-1.5 font-label font-medium text-fg-muted text-sm">
                     <Image
                       src="/design/icon-book-small.svg"

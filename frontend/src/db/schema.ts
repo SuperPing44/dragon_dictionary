@@ -140,3 +140,9 @@ export const section = sqliteTable(
 );
 
 export type Section = typeof section.$inferSelect;
+
+/** App-wide settings and status, e.g. the speaking rate or the last backup. */
+export const appMeta = sqliteTable("app_meta", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});

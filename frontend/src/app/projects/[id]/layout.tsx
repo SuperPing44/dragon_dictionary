@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getVideoProject, listCategories, nextCategoryColour } from "@/db";
+import {
+  getSpeakingRate,
+  getVideoProject,
+  listCategories,
+  nextCategoryColour,
+} from "@/db";
 import { OriginalIdea } from "./original-idea";
 import { ProjectHeader } from "./project-header";
 import { ProjectTabs } from "./project-tabs";
@@ -45,6 +50,7 @@ async function ProjectShell({
         project={project}
         allCategories={await listCategories()}
         defaultColour={await nextCategoryColour()}
+        rate={await getSpeakingRate()}
       />
       {hasOriginal && (
         <OriginalIdea

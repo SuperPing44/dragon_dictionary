@@ -136,3 +136,20 @@ export function projectCountLine(n: number): string {
   const capitalised = words.charAt(0).toUpperCase() + words.slice(1);
   return `${capitalised} ${n === 1 ? "tale" : "tales"} in the making — most recently touched first`;
 }
+
+/**
+ * Estimated speaking time for a word count: words ÷ rate, rounded to the
+ * nearest 5 s, as "≈ m:ss", or "≈ h:mm:ss" from an hour on.
+ */
+export function speakingTime(words: number, wordsPerMinute: number): string {
+  const seconds = Math.round(((words / wordsPerMinute) * 60) / 5) * 5;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = String(seconds % 60).padStart(2, "0");
+  return h > 0 ? `≈ ${h}:${String(m).padStart(2, "0")}:${s}` : `≈ ${m}:${s}`;
+}
+
+/** "1 word", "2,180 words". */
+export function wordsLine(words: number): string {
+  return `${words.toLocaleString("en")} ${words === 1 ? "word" : "words"}`;
+}

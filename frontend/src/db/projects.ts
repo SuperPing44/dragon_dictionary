@@ -24,7 +24,26 @@ export const EMPTY_DOC = JSON.stringify({
 
 export type VideoProjectWithCategories = VideoProject & {
   categories: Category[];
+  /** All sections' words, for the speaking-time estimate. */
+  wordCount: number;
 };
+
+/** Total words per project, keyed by project ID. */
+function wordsByProject(db: Db, projectIds: string[]): Map<string, number> {
+  if (projectIds.length === 0) return new Map();
+  return new Map(
+    db
+      .select({
+        project: section.videoProject,
+        words: sql<number>`coalesce(sum(${section.wordCount}), 0)`,
+      })
+      .from(section)
+      .where(inArray(section.videoProject, projectIds))
+      .groupBy(section.videoProject)
+      .all()
+      .map((r) => [r.project, r.words]),
+  );
+}
 
 /**
  * Turns an idea into a video project in one transaction: the project starts
@@ -102,13 +121,13 @@ export function listVideoProjects(db: Db): VideoProjectWithCategories[] {
     .from(videoProject)
     .orderBy(desc(videoProject.updated), desc(videoProject.created))
     .all();
-  const byProject = categoriesByProject(
-    db,
-    projects.map((p) => p.id),
-  );
+  const ids = projects.map((p) => p.id);
+  const byProject = categoriesByProject(db, ids);
+  const words = wordsByProject(db, ids);
   return projects.map((p) => ({
     ...p,
     categories: byProject.get(p.id) ?? [],
+    wordCount: words.get(p.id) ?? 0,
   }));
 }
 
@@ -125,6 +144,7 @@ export function getVideoProject(
   return {
     ...project,
     categories: categoriesByProject(db, [id]).get(id) ?? [],
+    wordCount: wordsByProject(db, [id]).get(id) ?? 0,
   };
 }
 

@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import type { Section, SectionKind } from "@/db/schema";
+import { speakingTime, wordsLine } from "@/lib/format";
 import { SECTION_KIND_LABELS } from "@/lib/labels";
 import {
   countDirections,
@@ -28,6 +29,7 @@ import {
   renameSubsectionAction,
   reorderAction,
   saveSection,
+  setRateAction,
 } from "./script-actions";
 import { insertStageDirection } from "./stage-direction";
 
@@ -35,6 +37,8 @@ const SAVE_DELAY_MS = 1000;
 
 type ScriptEditorProps = {
   projectId: string;
+  /** Words per minute for the speaking-time estimate. */
+  rate: number;
   /** Top-level sections by position, each followed by its subsections. */
   sections: Section[];
 };
@@ -88,6 +92,7 @@ function withGroupOrder(
  */
 export function ScriptEditor({
   projectId,
+  rate,
   sections: saved,
 }: ScriptEditorProps) {
   // Reorders show at once while they save.
@@ -115,6 +120,12 @@ export function ScriptEditor({
   const tops = sections.filter((s) => s.parent === null);
   const missing = missingKinds(tops.map((s) => s.kind as SectionKind));
   const totalWords = sections.reduce((n, s) => n + wordsOf(s), 0);
+  // An outline row's words: the Main part's row includes its subsections.
+  const rowWords = (s: Section) =>
+    wordsOf(s) +
+    sections
+      .filter((x) => x.parent === s.id)
+      .reduce((n, x) => n + wordsOf(x), 0);
 
   const flush = (id: string) => flushSave(timers.current, pending.current, id);
 
@@ -209,6 +220,8 @@ export function ScriptEditor({
         selectedId={selected?.id}
         missing={missing}
         totalWords={totalWords}
+        rate={rate}
+        timeOf={(s) => speakingTime(rowWords(s), rate)}
         filled={(s) =>
           hasContent(docOf(s)) ||
           sections.some((x) => x.parent === s.id && hasContent(docOf(x)))
@@ -283,8 +296,16 @@ export function ScriptEditor({
                   width={14}
                   height={14}
                 />
-                {wordsOf(selected).toLocaleString("en")}{" "}
-                {wordsOf(selected) === 1 ? "word" : "words"}
+                {wordsLine(wordsOf(selected))}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Image
+                  src="/design/icon-clock-small.svg"
+                  alt=""
+                  width={14}
+                  height={14}
+                />
+                {speakingTime(wordsOf(selected), rate)}
               </span>
               <span className="flex items-center gap-1.5">
                 <Image
@@ -329,6 +350,9 @@ type OutlineProps = {
   selectedId: string | undefined;
   missing: SectionKind[];
   totalWords: number;
+  rate: number;
+  /** An outline row's estimated speaking time. */
+  timeOf: (s: Section) => string;
   filled: (s: Section) => boolean;
   onOpen: (id: string) => void;
   onAdd: (kind: SectionKind) => void;
@@ -345,6 +369,8 @@ function Outline({
   selectedId,
   missing,
   totalWords,
+  rate,
+  timeOf,
   filled,
   onOpen,
   onAdd,
@@ -505,11 +531,16 @@ function Outline({
               >
                 {entryName(s)}
               </button>
+              <span
+                className={`shrink-0 font-label font-medium text-xs ${active ? "text-accent-glow" : "text-fg-muted"}`}
+              >
+                {timeOf(s)}
+              </span>
               <button
                 type="button"
                 aria-label={`Remove ${entryName(s)}`}
                 onClick={() => (filled(s) ? setConfirming(s.id) : onRemove(s))}
-                className="invisible rounded p-0.5 group-hover:visible focus-visible:visible"
+                className="hidden rounded p-0.5 group-hover:block focus-visible:block"
               >
                 <Image src="/design/icon-x.svg" alt="" width={14} height={14} />
               </button>
@@ -583,16 +614,82 @@ function Outline({
         </div>
       )}
 
-      <div className="mt-4 flex items-center border-border-soft border-t px-2 pt-3">
-        <p className="font-label font-semibold text-[11px] text-fg-muted uppercase tracking-[1.1px]">
-          Script total
-        </p>
-        <span className="flex-1" />
-        <p className="font-label text-fg-muted text-xs">
-          {totalWords.toLocaleString("en")}{" "}
-          {totalWords === 1 ? "word" : "words"}
-        </p>
+      <div className="mt-4 flex flex-col gap-1 border-border-soft border-t px-2 pt-3">
+        <div className="flex items-center">
+          <p className="font-label font-semibold text-[11px] text-fg-muted uppercase tracking-[1.1px]">
+            Script total
+          </p>
+          <span className="flex-1" />
+          <p className="font-bold font-heading text-[18px] text-gold">
+            {speakingTime(totalWords, rate)}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <p className="font-label text-fg-muted text-xs">
+            {wordsLine(totalWords)}
+          </p>
+          <span className="flex-1" />
+          <RateEditor rate={rate} />
+        </div>
       </div>
     </nav>
+  );
+}
+
+/** "at 150 wpm": click to change the app-wide rate (60–300). */
+function RateEditor({ rate }: { rate: number }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const value = Number(draft);
+  const valid = Number.isInteger(value) && value >= 60 && value <= 300;
+
+  function save() {
+    if (draft === null) return;
+    if (!valid) return;
+    setDraft(null);
+    if (value !== rate) startTransition(() => setRateAction(value));
+  }
+
+  if (draft === null) {
+    return (
+      <button
+        type="button"
+        onClick={() => setDraft(String(rate))}
+        className="flex items-center gap-1.5 font-label font-medium text-accent-glow text-xs underline underline-offset-2"
+      >
+        at {rate} wpm
+        <Image src="/design/icon-pen-small.svg" alt="" width={12} height={12} />
+      </button>
+    );
+  }
+
+  return (
+    <span className="flex flex-col items-end gap-1">
+      <span className="flex items-center gap-1 font-label text-fg-muted text-xs">
+        at
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") setDraft(null);
+          }}
+          onBlur={() => (valid ? save() : setDraft(null))}
+          inputMode="numeric"
+          aria-label="Speaking rate in words per minute"
+          aria-invalid={!valid}
+          // biome-ignore lint/a11y/noAutofocus: opened on purpose to type a rate
+          autoFocus
+          className={`w-12 rounded-md border bg-surface-2 px-1.5 py-0.5 text-right text-fg outline-none ${
+            valid ? "border-accent" : "border-danger"
+          }`}
+        />
+        wpm
+      </span>
+      {!valid && (
+        <span className="font-label text-[11px] text-danger">
+          A whole number from 60 to 300
+        </span>
+      )}
+    </span>
   );
 }

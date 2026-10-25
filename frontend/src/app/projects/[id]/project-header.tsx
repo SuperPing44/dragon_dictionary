@@ -9,6 +9,7 @@ import {
   VIDEO_STAGES,
   type VideoStage,
 } from "@/db/schema";
+import { speakingTime, wordsLine } from "@/lib/format";
 import { STAGE_LABELS } from "@/lib/labels";
 import {
   addCategoryToProject,
@@ -20,28 +21,36 @@ type ProjectHeaderProps = {
   project: VideoProjectWithCategories;
   allCategories: Category[];
   defaultColour: CategoryColour;
+  /** Words per minute for the estimated length. */
+  rate: number;
 };
 
 export function ProjectHeader({
   project,
   allCategories,
   defaultColour,
+  rate,
 }: ProjectHeaderProps) {
   return (
     <header className="flex items-center gap-4">
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
         <TitleField id={project.id} saved={project.title} />
-        <CategoryPicker
-          variant="inline"
-          label="Categories of this project"
-          assigned={project.categories}
-          all={allCategories}
-          defaultColour={defaultColour}
-          onAdd={(pick) => addCategoryToProject(project.id, pick)}
-          onRemove={(categoryId) =>
-            removeCategoryFromProject(project.id, categoryId)
-          }
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <CategoryPicker
+            variant="inline"
+            label="Categories of this project"
+            assigned={project.categories}
+            all={allCategories}
+            defaultColour={defaultColour}
+            onAdd={(pick) => addCategoryToProject(project.id, pick)}
+            onRemove={(categoryId) =>
+              removeCategoryFromProject(project.id, categoryId)
+            }
+          />
+          <p className="whitespace-pre font-label font-medium text-[13px] text-fg-muted">
+            {`·   ${speakingTime(project.wordCount, rate)}  ·  ${wordsLine(project.wordCount)}`}
+          </p>
+        </div>
       </div>
       <StageStars
         stage={project.stage}
