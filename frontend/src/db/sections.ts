@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, isNull, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { canonicalInsertIndex, countWords, parseDoc } from "@/lib/script";
 import type { Db } from "./connection";
@@ -105,4 +105,90 @@ export function removeSection(db: Db, sectionId: string, now = new Date()) {
     .returning({ project: section.videoProject })
     .get();
   if (removed) touchProject(db, removed.project, now);
+}
+
+/** Adds an empty subsection, titled "Untitled subsection", at the end of the Main part. */
+export function addSubsection(
+  db: Db,
+  mainId: string,
+  now = new Date(),
+): Section {
+  return db.transaction((tx) => {
+    const main = tx.select().from(section).where(eq(section.id, mainId)).get();
+    if (!main || main.kind !== "main") {
+      throw new Error("Only the Main part has subsections.");
+    }
+    const last = tx
+      .select({ position: section.position })
+      .from(section)
+      .where(eq(section.parent, mainId))
+      .orderBy(desc(section.position))
+      .get();
+    const added = tx
+      .insert(section)
+      .values({
+        id: uuidv7(),
+        videoProject: main.videoProject,
+        parent: mainId,
+        title: "Untitled subsection",
+        position: (last?.position ?? -1) + 1,
+        content: EMPTY_DOC,
+      })
+      .returning()
+      .get();
+    touchProject(tx, main.videoProject, now);
+    return added;
+  });
+}
+
+/** Renames a subsection; an empty title is kept and shows as "Untitled". */
+export function renameSubsection(
+  db: Db,
+  id: string,
+  title: string,
+  now = new Date(),
+): void {
+  const renamed = db
+    .update(section)
+    .set({ title: title.trim() })
+    .where(and(eq(section.id, id), isNotNull(section.parent)))
+    .returning({ project: section.videoProject })
+    .get();
+  if (renamed) touchProject(db, renamed.project, now);
+}
+
+/**
+ * Sets the order of one sibling group: the project's top-level sections
+ * (parent null) or the Main part's subsections. `orderedIds` must list
+ * exactly the current siblings.
+ */
+export function reorderSections(
+  db: Db,
+  projectId: string,
+  parent: string | null,
+  orderedIds: string[],
+  now = new Date(),
+): void {
+  db.transaction((tx) => {
+    const siblings = tx
+      .select({ id: section.id })
+      .from(section)
+      .where(
+        and(
+          eq(section.videoProject, projectId),
+          parent === null ? isNull(section.parent) : eq(section.parent, parent),
+        ),
+      )
+      .all()
+      .map((s) => s.id);
+    const same =
+      siblings.length === orderedIds.length &&
+      new Set(orderedIds).size === orderedIds.length &&
+      orderedIds.every((id) => siblings.includes(id));
+    if (!same) throw new Error("The new order must list exactly the siblings.");
+    orderedIds.forEach((id, position) => {
+      tx.update(section).set({ position }).where(eq(section.id, id)).run();
+    });
+    touchProject(tx, projectId, now);
+  });
 }

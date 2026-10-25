@@ -2,7 +2,13 @@
 
 import type { JSONContent } from "@tiptap/react";
 import Image from "next/image";
-import { startTransition, useEffect, useRef, useState } from "react";
+import {
+  startTransition,
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+} from "react";
 import type { Section, SectionKind } from "@/db/schema";
 import { SECTION_KIND_LABELS } from "@/lib/labels";
 import {
@@ -10,12 +16,16 @@ import {
   type DocNode,
   hasContent,
   missingKinds,
+  moveItem,
   parseDoc,
 } from "@/lib/script";
 import { EntryEditor } from "./entry-editor";
 import {
   addSectionAction,
+  addSubsectionAction,
   removeSectionAction,
+  renameSubsectionAction,
+  reorderAction,
   saveSection,
 } from "./script-actions";
 
@@ -44,23 +54,60 @@ function flushSave(
 const entryName = (s: Section) =>
   s.kind ? SECTION_KIND_LABELS[s.kind] : s.title || "Untitled";
 
+/** A sibling group: "top" for top-level sections, else the parent's ID. */
+const groupOf = (s: Section) => s.parent ?? "top";
+
+/** The flat list with one sibling group put in a new order. */
+function withGroupOrder(
+  sections: Section[],
+  group: string,
+  orderedIds: string[],
+): Section[] {
+  const byId = new Map(sections.map((s) => [s.id, s]));
+  const pick = (ids: string[]) =>
+    ids.flatMap((id) => {
+      const s = byId.get(id);
+      return s ? [s] : [];
+    });
+  const tops =
+    group === "top" ? pick(orderedIds) : sections.filter((s) => !s.parent);
+  return tops.flatMap((top) => [
+    top,
+    ...(group === top.id
+      ? pick(orderedIds)
+      : sections.filter((s) => s.parent === top.id)),
+  ]);
+}
+
 /**
  * The Script tab: an outline on the left and a writing area showing one
  * entry at a time. Text saves about a second after typing stops, and at
  * once when the entry loses focus or another entry is opened.
  */
-export function ScriptEditor({ projectId, sections }: ScriptEditorProps) {
-  const [selectedId, setSelectedId] = useState(sections[0]?.id);
+export function ScriptEditor({
+  projectId,
+  sections: saved,
+}: ScriptEditorProps) {
+  // Reorders show at once while they save.
+  const [sections, showSections] = useOptimistic(saved);
+  const [selectedId, setSelectedId] = useState(saved[0]?.id);
+  // Subsection titles typed in this session, by section ID.
+  const [titles, setTitles] = useState<Record<string, string>>({});
+  // A just-added subsection, whose title field takes focus.
+  const [freshId, setFreshId] = useState<string | null>(null);
   // Live documents typed in this session, by section ID.
   const [docs, setDocs] = useState<Record<string, DocNode>>({});
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const savedTitles = useRef(new Map<string, string>());
   const pending = useRef(new Map<string, string>());
 
+  const shown = (s: Section): Section =>
+    s.id in titles ? { ...s, title: titles[s.id] } : s;
   const docOf = (s: Section) => docs[s.id] ?? parseDoc(s.content);
   const wordsOf = (s: Section) =>
     docs[s.id] ? countWords(docs[s.id]) : s.wordCount;
-  const selected =
-    sections.find((s) => s.id === selectedId) ?? sections[0] ?? undefined;
+  const found = sections.find((s) => s.id === selectedId) ?? sections[0];
+  const selected = found ? shown(found) : undefined;
   const tops = sections.filter((s) => s.parent === null);
   const missing = missingKinds(tops.map((s) => s.kind as SectionKind));
   const totalWords = sections.reduce((n, s) => n + wordsOf(s), 0);
@@ -91,14 +138,55 @@ export function ScriptEditor({ projectId, sections }: ScriptEditorProps) {
     };
   }, []);
 
+  /** Saves the open entry's text and title before another one opens. */
+  function leave() {
+    if (!selected) return;
+    flush(selected.id);
+    commitTitle(selected.id);
+  }
+
   function open(id: string) {
-    if (selected) flush(selected.id);
+    leave();
     setSelectedId(id);
   }
 
   async function add(kind: SectionKind) {
+    leave();
     const id = await addSectionAction(projectId, kind);
     setSelectedId(id);
+  }
+
+  async function addSub(mainId: string) {
+    leave();
+    const id = await addSubsectionAction(mainId);
+    setFreshId(id);
+    setSelectedId(id);
+  }
+
+  function rename(id: string, title: string) {
+    setTitles((prev) => ({ ...prev, [id]: title }));
+  }
+
+  function commitTitle(id: string) {
+    if (!(id in titles)) return;
+    const title = titles[id];
+    if (savedTitles.current.get(id) === title) return;
+    savedTitles.current.set(id, title);
+    startTransition(() => renameSubsectionAction(id, title));
+  }
+
+  function reorder(group: string, from: number, to: number) {
+    const siblings = sections.filter((s) => groupOf(s) === group);
+    if (to < 0 || to >= siblings.length || from === to) return;
+    const orderedIds = moveItem(siblings, from, to).map((s) => s.id);
+    startTransition(async () => {
+      showSections(withGroupOrder(sections, group, orderedIds));
+      await reorderAction(
+        projectId,
+        group === "top" ? null : group,
+        orderedIds,
+      );
+    });
   }
 
   function remove(s: Section) {
@@ -113,7 +201,7 @@ export function ScriptEditor({ projectId, sections }: ScriptEditorProps) {
   return (
     <div className="flex items-start gap-5">
       <Outline
-        sections={sections}
+        sections={sections.map(shown)}
         selectedId={selected?.id}
         missing={missing}
         totalWords={totalWords}
@@ -123,7 +211,9 @@ export function ScriptEditor({ projectId, sections }: ScriptEditorProps) {
         }
         onOpen={open}
         onAdd={add}
+        onAddSubsection={addSub}
         onRemove={remove}
+        onMove={reorder}
       />
 
       <section
@@ -137,9 +227,31 @@ export function ScriptEditor({ projectId, sections }: ScriptEditorProps) {
                 Main part › subsection
               </p>
             )}
-            <h2 className="pb-3.5 font-semibold text-[34px] text-fg">
-              {entryName(selected)}
-            </h2>
+            {selected.parent ? (
+              <input
+                key={`title-${selected.id}`}
+                value={selected.title ?? ""}
+                onChange={(e) => rename(selected.id, e.target.value)}
+                onBlur={() => commitTitle(selected.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                }}
+                onFocus={(e) => {
+                  if (freshId !== selected.id) return;
+                  e.currentTarget.select();
+                  setFreshId(null);
+                }}
+                // biome-ignore lint/a11y/noAutofocus: a new subsection is named first
+                autoFocus={freshId === selected.id}
+                placeholder="Untitled"
+                aria-label="Subsection title"
+                className="-mx-1.5 mb-3.5 w-[calc(100%+0.75rem)] rounded-lg border border-transparent bg-transparent px-1.5 font-semibold text-[34px] text-fg outline-none placeholder:text-fg-faint placeholder:italic hover:border-border-soft focus:border-accent focus:bg-surface-2"
+              />
+            ) : (
+              <h2 className="pb-3.5 font-semibold text-[34px] text-fg">
+                {entryName(selected)}
+              </h2>
+            )}
             <div className="mb-3.5 flex items-center gap-[18px] rounded-[10px] bg-surface-2 px-3.5 py-2 font-label font-medium text-fg-muted text-xs">
               <span className="flex items-center gap-1.5">
                 <Image
@@ -153,7 +265,7 @@ export function ScriptEditor({ projectId, sections }: ScriptEditorProps) {
               </span>
             </div>
             <EntryEditor
-              key={selected.id}
+              key={`editor-${selected.id}`}
               initial={docOf(selected) as JSONContent}
               placeholder={
                 selected.kind === "main"
@@ -182,8 +294,13 @@ type OutlineProps = {
   filled: (s: Section) => boolean;
   onOpen: (id: string) => void;
   onAdd: (kind: SectionKind) => void;
+  onAddSubsection: (mainId: string) => void;
   onRemove: (s: Section) => void;
+  /** Moves an entry within its sibling group ("top" or the parent's ID). */
+  onMove: (group: string, from: number, to: number) => void;
 };
+
+type DragPoint = { group: string; index: number };
 
 function Outline({
   sections,
@@ -193,10 +310,24 @@ function Outline({
   filled,
   onOpen,
   onAdd,
+  onAddSubsection,
   onRemove,
+  onMove,
 }: OutlineProps) {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  // Drag handles are separate from drop targets: a draggable ancestor
+  // around an editor breaks text selection (prototype lesson).
+  const [dragging, setDragging] = useState<DragPoint | null>(null);
+  const [over, setOver] = useState<DragPoint | null>(null);
+  const indexIn = (s: Section) =>
+    sections
+      .filter((x) => groupOf(x) === groupOf(s))
+      .findIndex((x) => x.id === s.id);
+  const main = sections.find((s) => s.kind === "main");
+  const lastOfMain = main
+    ? (sections.filter((x) => x.parent === main.id).at(-1)?.id ?? main.id)
+    : undefined;
 
   return (
     <nav
@@ -247,17 +378,73 @@ function Outline({
               </li>
             );
           }
-          return (
+          const group = groupOf(s);
+          const index = indexIn(s);
+          const isOver =
+            over?.group === group &&
+            over.index === index &&
+            dragging?.index !== index;
+          const row = (
             <li
               key={s.id}
+              onDragOver={(e) => {
+                if (dragging?.group !== group) return;
+                e.preventDefault();
+                setOver({ group, index });
+              }}
+              onDrop={(e) => {
+                if (dragging?.group !== group) return;
+                e.preventDefault();
+                onMove(group, dragging.index, index);
+                setDragging(null);
+                setOver(null);
+              }}
               className={`group flex items-center gap-2 rounded-[10px] border py-0.5 pr-2.5 ${
                 sub ? "pl-[30px]" : "pl-2"
               } ${
                 active
                   ? "border-accent bg-surface-3 shadow-[0_0_12px_rgb(158_107_255/0.25)]"
                   : "border-transparent hover:bg-surface-2"
+              } ${isOver ? "outline-2 outline-accent" : ""} ${
+                dragging?.group === group && dragging.index === index
+                  ? "opacity-50"
+                  : ""
               }`}
             >
+              <button
+                type="button"
+                draggable
+                aria-label={`Move ${entryName(s)}`}
+                title="Drag to reorder, or focus and use the arrow keys"
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", s.id);
+                  setDragging({ group, index });
+                }}
+                onDragEnd={() => {
+                  setDragging(null);
+                  setOver(null);
+                }}
+                onKeyDown={(e) => {
+                  const step =
+                    e.key === "ArrowUp" ? -1 : e.key === "ArrowDown" ? 1 : 0;
+                  if (!step) return;
+                  e.preventDefault();
+                  onMove(group, index, index + step);
+                }}
+                className="cursor-grab rounded p-0.5 focus-visible:outline-1 focus-visible:outline-accent active:cursor-grabbing"
+              >
+                <Image
+                  src={
+                    active
+                      ? "/design/icon-grip-active.svg"
+                      : "/design/icon-grip.svg"
+                  }
+                  alt=""
+                  width={14}
+                  height={14}
+                />
+              </button>
               {sub && (
                 <Image
                   src={
@@ -290,6 +477,25 @@ function Outline({
               </button>
             </li>
           );
+          if (!main || s.id !== lastOfMain) return row;
+          return [
+            row,
+            <li key="add-subsection">
+              <button
+                type="button"
+                onClick={() => onAddSubsection(main.id)}
+                className="flex items-center gap-1.5 py-[7px] pr-2.5 pl-[30px] font-label font-medium text-[13px] text-accent-glow hover:underline"
+              >
+                <Image
+                  src="/design/icon-plus-small.svg"
+                  alt=""
+                  width={14}
+                  height={14}
+                />
+                Subsection
+              </button>
+            </li>,
+          ];
         })}
       </ol>
 

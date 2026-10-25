@@ -4,7 +4,14 @@ import { type Db, openDb } from "./connection";
 import { createIdea } from "./ideas";
 import { getVideoProject, listSections, makeVideoProject } from "./projects";
 import { section } from "./schema";
-import { addSection, removeSection, saveSectionContent } from "./sections";
+import {
+  addSection,
+  addSubsection,
+  removeSection,
+  renameSubsection,
+  reorderSections,
+  saveSectionContent,
+} from "./sections";
 
 let db: Db;
 let projectId: string;
@@ -132,3 +139,100 @@ describe("addSection", () => {
 function sqlKind(kind: string) {
   return eq(section.id, sectionOf(kind));
 }
+
+describe("subsections", () => {
+  const subs = () =>
+    listSections(db, projectId)
+      .filter((s) => s.parent)
+      .map((s) => s.title);
+
+  it("adds untitled subsections at the end of the Main part", () => {
+    const main = sectionOf("main");
+    const first = addSubsection(db, main);
+    addSubsection(db, main);
+    expect(first).toMatchObject({ parent: main, kind: null, wordCount: 0 });
+    expect(subs()).toEqual(["Untitled subsection", "Untitled subsection"]);
+    // Listed right after the Main part, before the Outro.
+    expect(listSections(db, projectId).map((s) => s.kind ?? "sub")).toEqual([
+      "opening_story",
+      "hook",
+      "intro",
+      "main",
+      "sub",
+      "sub",
+      "outro",
+      "closing_story",
+    ]);
+  });
+
+  it("only the Main part has subsections", () => {
+    expect(() => addSubsection(db, sectionOf("hook"))).toThrow();
+  });
+
+  it("renames, keeping an empty title", () => {
+    const sub = addSubsection(db, sectionOf("main"));
+    renameSubsection(db, sub.id, "  Signs of the end ");
+    expect(subs()).toEqual(["Signs of the end"]);
+    renameSubsection(db, sub.id, "");
+    expect(subs()).toEqual([""]);
+  });
+
+  it("never renames a top-level section", () => {
+    renameSubsection(db, sectionOf("hook"), "Not a hook");
+    expect(
+      listSections(db, projectId).find((s) => s.kind === "hook")?.title,
+    ).toBeNull();
+  });
+
+  it("adding the first subsection leaves the Main part's lead-in alone", () => {
+    const main = sectionOf("main");
+    saveSectionContent(db, main, doc("Lead-in words"));
+    addSubsection(db, main);
+    expect(
+      listSections(db, projectId).find((s) => s.id === main)?.wordCount,
+    ).toBe(2);
+  });
+});
+
+describe("reorderSections", () => {
+  it("reorders top-level sections", () => {
+    const ids = listSections(db, projectId).map((s) => s.id);
+    reorderSections(db, projectId, null, [ids[5], ...ids.slice(0, 5)]);
+    expect(kinds()).toEqual([
+      "closing_story",
+      "opening_story",
+      "hook",
+      "intro",
+      "main",
+      "outro",
+    ]);
+  });
+
+  it("reorders subsections within the Main part", () => {
+    const main = sectionOf("main");
+    const a = addSubsection(db, main);
+    const b = addSubsection(db, main);
+    renameSubsection(db, a.id, "A");
+    renameSubsection(db, b.id, "B");
+    reorderSections(db, projectId, main, [b.id, a.id]);
+    expect(
+      listSections(db, projectId)
+        .filter((s) => s.parent)
+        .map((s) => s.title),
+    ).toEqual(["B", "A"]);
+  });
+
+  it("refuses an order that isn't exactly the siblings", () => {
+    const main = sectionOf("main");
+    const sub = addSubsection(db, main);
+    const tops = listSections(db, projectId)
+      .filter((s) => !s.parent)
+      .map((s) => s.id);
+    // A subsection can't be moved to the top level.
+    expect(() =>
+      reorderSections(db, projectId, null, [...tops, sub.id]),
+    ).toThrow();
+    expect(() => reorderSections(db, projectId, null, tops.slice(1))).toThrow();
+    expect(() => reorderSections(db, projectId, main, [tops[0]])).toThrow();
+  });
+});

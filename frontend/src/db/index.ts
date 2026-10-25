@@ -185,6 +185,25 @@ export async function removeSection(sectionId: string) {
   sectionQueries.removeSection(getDb(), sectionId);
 }
 
+export async function addSubsection(mainId: string) {
+  await io();
+  return sectionQueries.addSubsection(getDb(), mainId);
+}
+
+export async function renameSubsection(id: string, title: string) {
+  await io();
+  sectionQueries.renameSubsection(getDb(), id, title);
+}
+
+export async function reorderSections(
+  projectId: string,
+  parent: string | null,
+  orderedIds: string[],
+) {
+  await io();
+  sectionQueries.reorderSections(getDb(), projectId, parent, orderedIds);
+}
+
 export type SidebarCounts = {
   ideas: number;
   videoProjects: number;
