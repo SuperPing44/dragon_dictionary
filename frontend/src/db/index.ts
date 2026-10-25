@@ -2,6 +2,7 @@ import { io } from "next/cache";
 import * as categoryQueries from "./categories";
 import { getDb } from "./connection";
 import * as ideaQueries from "./ideas";
+import * as metaQueries from "./meta";
 import * as projectQueries from "./projects";
 import type { Category, CategoryColour, SectionKind } from "./schema";
 import * as sectionQueries from "./sections";
@@ -202,6 +203,16 @@ export async function reorderSections(
 ) {
   await io();
   sectionQueries.reorderSections(getDb(), projectId, parent, orderedIds);
+}
+
+export async function getSpeakingRate() {
+  await io();
+  return metaQueries.getSpeakingRate(getDb());
+}
+
+export async function setSpeakingRate(rate: number) {
+  await io();
+  metaQueries.setSpeakingRate(getDb(), rate);
 }
 
 export type SidebarCounts = {

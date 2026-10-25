@@ -19,6 +19,7 @@ import {
   removeProjectCategory,
   updateVideoProject,
 } from "./projects";
+import { addSubsection, saveSectionContent } from "./sections";
 
 let db: Db;
 let clock: number;
@@ -201,5 +202,37 @@ describe("categories with video projects", () => {
         c.videoProjects,
       ]),
     ).toEqual([["Norse Mythology", 1, 2]]);
+  });
+});
+
+describe("project word totals", () => {
+  it("sums every section's words, subsections included", () => {
+    const id = makeVideoProject(db, ideaWith("Ragnarök", null, null))?.id ?? "";
+    const other =
+      makeVideoProject(db, ideaWith("Krampus", null, null))?.id ?? "";
+    const sections = listSections(db, id);
+    const words = (n: number) =>
+      JSON.stringify({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "word ".repeat(n) }],
+          },
+        ],
+      });
+    saveSectionContent(db, sections[1].id, words(120));
+    const main = sections.find((s) => s.kind === "main")?.id ?? "";
+    const sub = addSubsection(db, main);
+    saveSectionContent(db, sub.id, words(30));
+
+    expect(getVideoProject(db, id)?.wordCount).toBe(150);
+    expect(listVideoProjects(db).map((p) => [p.title, p.wordCount])).toEqual(
+      expect.arrayContaining([
+        ["Ragnarök", 150],
+        ["Krampus", 0],
+      ]),
+    );
+    expect(other).toBeDefined();
   });
 });

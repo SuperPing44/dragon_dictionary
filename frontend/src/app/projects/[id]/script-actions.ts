@@ -9,11 +9,23 @@ import {
   reorderSections,
   type SectionKind,
   saveSectionContent,
+  setSpeakingRate,
 } from "@/db";
 
-/** Autosave: stores the text and returns its word count. */
+/**
+ * Autosave: stores the text and returns its word count. Refreshing keeps the
+ * header's total words and length current.
+ */
 export async function saveSection(sectionId: string, content: string) {
-  return saveSectionContent(sectionId, content);
+  const words = await saveSectionContent(sectionId, content);
+  refresh();
+  return words;
+}
+
+/** Sets the app-wide speaking rate (a whole number from 60 to 300). */
+export async function setRateAction(rate: number) {
+  await setSpeakingRate(rate);
+  refresh();
 }
 
 export async function addSectionAction(projectId: string, kind: SectionKind) {

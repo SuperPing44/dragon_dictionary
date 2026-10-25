@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { listSections } from "@/db";
+import { getSpeakingRate, listSections } from "@/db";
 import { ScriptEditor } from "./script-editor";
 
 /** The Script tab. */
@@ -17,5 +17,11 @@ async function Script({
   params: PageProps<"/projects/[id]">["params"];
 }) {
   const { id } = await params;
-  return <ScriptEditor projectId={id} sections={await listSections(id)} />;
+  return (
+    <ScriptEditor
+      projectId={id}
+      rate={await getSpeakingRate()}
+      sections={await listSections(id)}
+    />
+  );
 }
