@@ -1,6 +1,6 @@
 "use client";
 
-import type { JSONContent } from "@tiptap/react";
+import type { Editor, JSONContent } from "@tiptap/react";
 import Image from "next/image";
 import {
   startTransition,
@@ -12,6 +12,7 @@ import {
 import type { Section, SectionKind } from "@/db/schema";
 import { SECTION_KIND_LABELS } from "@/lib/labels";
 import {
+  countDirections,
   countWords,
   type DocNode,
   hasContent,
@@ -28,6 +29,7 @@ import {
   reorderAction,
   saveSection,
 } from "./script-actions";
+import { insertStageDirection } from "./stage-direction";
 
 const SAVE_DELAY_MS = 1000;
 
@@ -95,6 +97,7 @@ export function ScriptEditor({
   const [titles, setTitles] = useState<Record<string, string>>({});
   // A just-added subsection, whose title field takes focus.
   const [freshId, setFreshId] = useState<string | null>(null);
+  const [editor, setEditor] = useState<Editor | null>(null);
   // Live documents typed in this session, by section ID.
   const [docs, setDocs] = useState<Record<string, DocNode>>({});
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
@@ -104,6 +107,7 @@ export function ScriptEditor({
   const shown = (s: Section): Section =>
     s.id in titles ? { ...s, title: titles[s.id] } : s;
   const docOf = (s: Section) => docs[s.id] ?? parseDoc(s.content);
+  const imagesOf = (s: Section) => countDirections(docOf(s));
   const wordsOf = (s: Section) =>
     docs[s.id] ? countWords(docs[s.id]) : s.wordCount;
   const found = sections.find((s) => s.id === selectedId) ?? sections[0];
@@ -227,31 +231,50 @@ export function ScriptEditor({
                 Main part › subsection
               </p>
             )}
-            {selected.parent ? (
-              <input
-                key={`title-${selected.id}`}
-                value={selected.title ?? ""}
-                onChange={(e) => rename(selected.id, e.target.value)}
-                onBlur={() => commitTitle(selected.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.blur();
-                }}
-                onFocus={(e) => {
-                  if (freshId !== selected.id) return;
-                  e.currentTarget.select();
-                  setFreshId(null);
-                }}
-                // biome-ignore lint/a11y/noAutofocus: a new subsection is named first
-                autoFocus={freshId === selected.id}
-                placeholder="Untitled"
-                aria-label="Subsection title"
-                className="-mx-1.5 mb-3.5 w-[calc(100%+0.75rem)] rounded-lg border border-transparent bg-transparent px-1.5 font-semibold text-[34px] text-fg outline-none placeholder:text-fg-faint placeholder:italic hover:border-border-soft focus:border-accent focus:bg-surface-2"
-              />
-            ) : (
-              <h2 className="pb-3.5 font-semibold text-[34px] text-fg">
-                {entryName(selected)}
-              </h2>
-            )}
+            <div className="flex items-center gap-3 pb-3.5">
+              {selected.parent ? (
+                <input
+                  key={`title-${selected.id}`}
+                  value={selected.title ?? ""}
+                  onChange={(e) => rename(selected.id, e.target.value)}
+                  onBlur={() => commitTitle(selected.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }}
+                  onFocus={(e) => {
+                    if (freshId !== selected.id) return;
+                    e.currentTarget.select();
+                    setFreshId(null);
+                  }}
+                  // biome-ignore lint/a11y/noAutofocus: a new subsection is named first
+                  autoFocus={freshId === selected.id}
+                  placeholder="Untitled"
+                  aria-label="Subsection title"
+                  className="-mx-1.5 min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1.5 font-semibold text-[34px] text-fg outline-none placeholder:text-fg-faint placeholder:italic hover:border-border-soft focus:border-accent focus:bg-surface-2"
+                />
+              ) : (
+                <h2 className="min-w-0 flex-1 font-semibold text-[34px] text-fg">
+                  {entryName(selected)}
+                </h2>
+              )}
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => insertStageDirection(editor)}
+                className="flex shrink-0 items-center gap-2 rounded-xl border border-amber/60 bg-amber/10 px-3 py-2 font-bold font-heading text-[13px] text-amber tracking-[0.78px] hover:bg-amber/15"
+              >
+                <Image
+                  src="/design/icon-image-button.svg"
+                  alt=""
+                  width={17}
+                  height={17}
+                />
+                Image
+                <kbd className="rounded-[5px] bg-canvas px-1.5 py-0.5 font-label font-medium text-[11px] text-fg-muted tracking-normal">
+                  Alt+I
+                </kbd>
+              </button>
+            </div>
             <div className="mb-3.5 flex items-center gap-[18px] rounded-[10px] bg-surface-2 px-3.5 py-2 font-label font-medium text-fg-muted text-xs">
               <span className="flex items-center gap-1.5">
                 <Image
@@ -262,6 +285,20 @@ export function ScriptEditor({
                 />
                 {wordsOf(selected).toLocaleString("en")}{" "}
                 {wordsOf(selected) === 1 ? "word" : "words"}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Image
+                  src="/design/icon-image-small.svg"
+                  alt=""
+                  width={14}
+                  height={14}
+                />
+                {imagesOf(selected)}{" "}
+                {imagesOf(selected) === 1 ? "image" : "images"}
+              </span>
+              <span className="flex-1" />
+              <span className="font-body font-normal text-[13px] text-fg-faint italic">
+                Images aren’t counted
               </span>
             </div>
             <EntryEditor
@@ -274,6 +311,7 @@ export function ScriptEditor({
               }
               onChange={(doc) => change(selected.id, doc)}
               onBlur={() => flush(selected.id)}
+              onEditor={setEditor}
             />
           </>
         ) : (

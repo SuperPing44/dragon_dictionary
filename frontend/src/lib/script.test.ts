@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canonicalInsertIndex,
+  countDirections,
   countWords,
   type DocNode,
   hasContent,
@@ -99,5 +100,16 @@ describe("moveItem", () => {
     expect(moveItem(["a", "b", "c", "d"], 0, 2)).toEqual(["b", "c", "a", "d"]);
     expect(moveItem(["a", "b", "c", "d"], 3, 1)).toEqual(["a", "d", "b", "c"]);
     expect(moveItem(["a", "b"], 1, 1)).toEqual(["a", "b"]);
+  });
+});
+
+describe("countDirections", () => {
+  it("counts stage directions across paragraphs", () => {
+    expect(
+      countDirections(
+        doc(p(t("a"), direction), p(direction, t("b"), direction)),
+      ),
+    ).toBe(3);
+    expect(countDirections(doc(p(t("none"))))).toBe(0);
   });
 });
