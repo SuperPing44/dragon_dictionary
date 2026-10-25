@@ -151,3 +151,73 @@ export function categoriesByIdea(
 export function countCategories(db: Db): number {
   return db.select({ n: count() }).from(category).get()?.n ?? 0;
 }
+
+export type CategoryWithUsage = Category & {
+  ideas: number;
+  videoProjects: number;
+};
+
+/** All categories A–Z with how many items use each. */
+export function listCategoriesWithUsage(db: Db): CategoryWithUsage[] {
+  const ideaCounts = new Map(
+    db
+      .select({ id: ideaCategory.category, n: count() })
+      .from(ideaCategory)
+      .groupBy(ideaCategory.category)
+      .all()
+      .map((r) => [r.id, r.n]),
+  );
+  // Video projects arrive with their own ticket.
+  return listCategories(db).map((c) => ({
+    ...c,
+    ideas: ideaCounts.get(c.id) ?? 0,
+    videoProjects: 0,
+  }));
+}
+
+export function setCategoryColour(
+  db: Db,
+  id: string,
+  colour: CategoryColour,
+): void {
+  if (!isCategoryColour(colour)) throw new Error(`Unknown colour: ${colour}`);
+  db.update(category).set({ colour }).where(eq(category.id, id)).run();
+}
+
+export type RenameResult =
+  | { ok: true }
+  /** Another category already has this name, ignoring case. */
+  | { ok: false; conflict: Category };
+
+/**
+ * Renames a category everywhere. A name taken by another category (ignoring
+ * case) is not applied; the caller can offer to merge instead.
+ */
+export function renameCategory(db: Db, id: string, name: string): RenameResult {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("A category needs a name.");
+  const other = findCategoryByName(db, trimmed);
+  if (other && other.id !== id) return { ok: false, conflict: other };
+  db.update(category).set({ name: trimmed }).where(eq(category.id, id)).run();
+  return { ok: true };
+}
+
+/**
+ * Moves every link of one category onto another and deletes the first, in
+ * one transaction. Items that had both keep one link.
+ */
+export function mergeCategory(db: Db, fromId: string, intoId: string): void {
+  if (fromId === intoId) return;
+  db.transaction((tx) => {
+    tx.run(sql`
+      insert or ignore into ${ideaCategory} (idea, category)
+      select idea, ${intoId} from ${ideaCategory} where category = ${fromId}
+    `);
+    tx.delete(category).where(eq(category.id, fromId)).run();
+  });
+}
+
+/** Deletes a category; its links go with it, the items keep everything else. */
+export function deleteCategory(db: Db, id: string): void {
+  db.delete(category).where(eq(category.id, id)).run();
+}

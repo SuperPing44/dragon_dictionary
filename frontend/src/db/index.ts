@@ -58,6 +58,36 @@ export async function listCategories() {
   return categoryQueries.listCategories(getDb());
 }
 
+export async function listCategoriesWithUsage() {
+  await io();
+  return categoryQueries.listCategoriesWithUsage(getDb());
+}
+
+export async function createCategory(name: string, colour: CategoryColour) {
+  await io();
+  return categoryQueries.createCategory(getDb(), name, colour);
+}
+
+export async function setCategoryColour(id: string, colour: CategoryColour) {
+  await io();
+  categoryQueries.setCategoryColour(getDb(), id, colour);
+}
+
+export async function renameCategory(id: string, name: string) {
+  await io();
+  return categoryQueries.renameCategory(getDb(), id, name);
+}
+
+export async function mergeCategory(fromId: string, intoId: string) {
+  await io();
+  categoryQueries.mergeCategory(getDb(), fromId, intoId);
+}
+
+export async function deleteCategory(id: string) {
+  await io();
+  categoryQueries.deleteCategory(getDb(), id);
+}
+
 export async function nextCategoryColour() {
   await io();
   return categoryQueries.nextCategoryColour(getDb());
@@ -102,6 +132,7 @@ export async function sidebarCounts(): Promise<SidebarCounts> {
   };
 }
 
+export type { CategoryWithUsage, RenameResult } from "./categories";
 export { IDEA_SORTS, type IdeaSort } from "./ideas";
 export {
   CATEGORY_COLOURS,
