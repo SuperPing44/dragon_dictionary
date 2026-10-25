@@ -3,14 +3,17 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import type { Idea } from "@/db/schema";
+import type { Category, CategoryColour, Idea } from "@/db/schema";
 import { removeIdea, saveIdea } from "./actions";
+import { CategoryPicker } from "./category-picker";
 
 const SAVE_DELAY_MS = 1000;
 const RATINGS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 type IdeaPanelProps = {
-  idea: Idea;
+  idea: Idea & { categories: Category[] };
+  allCategories: Category[];
+  defaultColour: CategoryColour;
   createdLabel: string;
   /** Where to go once the idea is deleted. */
   afterDeleteHref: string;
@@ -18,6 +21,8 @@ type IdeaPanelProps = {
 
 export function IdeaPanel({
   idea,
+  allCategories,
+  defaultColour,
   createdLabel,
   afterDeleteHref,
 }: IdeaPanelProps) {
@@ -91,6 +96,14 @@ export function IdeaPanel({
           );
         })}
       </fieldset>
+
+      <p className={LABEL}>Categories</p>
+      <CategoryPicker
+        ideaId={idea.id}
+        assigned={idea.categories}
+        all={allCategories}
+        defaultColour={defaultColour}
+      />
 
       <div className="mt-4 flex items-center justify-end gap-2.5">
         {confirmingDelete ? (

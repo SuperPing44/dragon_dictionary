@@ -24,6 +24,14 @@
   --color-amber: #f2a93b;
   --color-danger: #ff6b8a;
 
+  --font-heading: var(--font-cinzel);
+  --font-logo: var(--font-cinzel-decorative);
+  --font-body: var(--font-crimson-pro);
+  --font-label: var(--font-inter);
+}
+
+/* Always emitted: category chips pick their shade by name at runtime. */
+@theme static {
   --color-category-emerald: #34d399;
   --color-category-teal: #2dd4bf;
   --color-category-sky: #38bdf8;
@@ -36,11 +44,6 @@
   --color-category-amber: #fbbf24;
   --color-category-lime: #a3e635;
   --color-category-slate: #94a3b8;
-
-  --font-heading: var(--font-cinzel);
-  --font-logo: var(--font-cinzel-decorative);
-  --font-body: var(--font-crimson-pro);
-  --font-label: var(--font-inter);
 }
 
 html {

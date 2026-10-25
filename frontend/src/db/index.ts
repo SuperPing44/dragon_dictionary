@@ -1,13 +1,36 @@
 import { io } from "next/cache";
+import * as categoryQueries from "./categories";
 import { getDb } from "./connection";
 import * as ideaQueries from "./ideas";
+import type { Category, CategoryColour } from "./schema";
 
 // Every query goes through here. better-sqlite3 is synchronous, so each read
 // awaits io() first; otherwise cacheComponents would prerender it.
 
-export async function listIdeas(sort?: ideaQueries.IdeaSort) {
+export async function listIdeas(
+  sort?: ideaQueries.IdeaSort,
+  categoryIds?: string[],
+) {
   await io();
-  return ideaQueries.listIdeas(getDb(), sort);
+  return ideaQueries.listIdeas(getDb(), sort, categoryIds);
+}
+
+/** Ideas with each idea's categories attached. */
+export async function listIdeasWithCategories(
+  sort?: ideaQueries.IdeaSort,
+  categoryIds?: string[],
+) {
+  await io();
+  const db = getDb();
+  const ideas = ideaQueries.listIdeas(db, sort, categoryIds);
+  const byIdea = categoryQueries.categoriesByIdea(
+    db,
+    ideas.map((i) => i.id),
+  );
+  return ideas.map((idea) => ({
+    ...idea,
+    categories: byIdea.get(idea.id) ?? [],
+  }));
 }
 
 export async function getIdea(id: string) {
@@ -30,6 +53,36 @@ export async function deleteIdea(id: string) {
   ideaQueries.deleteIdea(getDb(), id);
 }
 
+export async function listCategories() {
+  await io();
+  return categoryQueries.listCategories(getDb());
+}
+
+export async function nextCategoryColour() {
+  await io();
+  return categoryQueries.nextCategoryColour(getDb());
+}
+
+/** Adds an existing category, or a new one by name (an existing name wins). */
+export async function addIdeaCategory(
+  ideaId: string,
+  pick: { categoryId: string } | { name: string; colour: CategoryColour },
+): Promise<Category | undefined> {
+  await io();
+  const db = getDb();
+  const target =
+    "categoryId" in pick
+      ? categoryQueries.listCategories(db).find((c) => c.id === pick.categoryId)
+      : categoryQueries.createCategory(db, pick.name, pick.colour);
+  if (target) categoryQueries.addIdeaCategory(db, ideaId, target.id);
+  return target;
+}
+
+export async function removeIdeaCategory(ideaId: string, categoryId: string) {
+  await io();
+  categoryQueries.removeIdeaCategory(getDb(), ideaId, categoryId);
+}
+
 export type SidebarCounts = {
   ideas: number;
   videoProjects: number;
@@ -40,14 +93,19 @@ export type SidebarCounts = {
 export async function sidebarCounts(): Promise<SidebarCounts> {
   await io();
   const db = getDb();
-  // Video projects, sources and categories arrive with their own tickets.
+  // Video projects and sources arrive with their own tickets.
   return {
     ideas: ideaQueries.countIdeas(db),
     videoProjects: 0,
     sources: 0,
-    categories: 0,
+    categories: categoryQueries.countCategories(db),
   };
 }
 
 export { IDEA_SORTS, type IdeaSort } from "./ideas";
-export type { Idea } from "./schema";
+export {
+  CATEGORY_COLOURS,
+  type Category,
+  type CategoryColour,
+  type Idea,
+} from "./schema";
