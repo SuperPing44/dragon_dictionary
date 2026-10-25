@@ -153,3 +153,11 @@ export function speakingTime(words: number, wordsPerMinute: number): string {
 export function wordsLine(words: number): string {
   return `${words.toLocaleString("en")} ${words === 1 ? "word" : "words"}`;
 }
+
+/** The library subtitle, e.g. "Forty-eight sources, one shared hoard". */
+export function sourceCountLine(n: number): string {
+  if (n === 0) return "The hoard of sources is empty";
+  const words = numberInWords(n);
+  const capitalised = words.charAt(0).toUpperCase() + words.slice(1);
+  return `${capitalised} ${n === 1 ? "source" : "sources"}, one shared hoard`;
+}

@@ -146,3 +146,31 @@ export const appMeta = sqliteTable("app_meta", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
 });
+
+/** What kind of thing a source is. Just a label: one form fits every type. */
+export const SOURCE_TYPES = [
+  "website",
+  "book",
+  "pdf",
+  "youtube",
+  "paper",
+] as const;
+export type SourceType = (typeof SOURCE_TYPES)[number];
+
+export const source = sqliteTable("source", {
+  id: text("id").primaryKey(),
+  type: text("type").$type<SourceType>().notNull(),
+  title: text("title").notNull(),
+  // For YouTube, the channel.
+  author: text("author"),
+  link: text("link"),
+  // For papers, the journal.
+  publisher: text("publisher"),
+  // Partial ISO text, as precise as known: 1220, 1220-05 or 1220-05-03.
+  date: text("date"),
+  note: text("note"),
+  created: text("created").notNull(),
+  updated: text("updated").notNull(),
+});
+
+export type Source = typeof source.$inferSelect;
