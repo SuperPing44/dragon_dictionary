@@ -12,6 +12,7 @@ import {
   nextCategoryColour,
 } from "@/db";
 import { formatDay, ideaCountLine } from "@/lib/format";
+import { makeProject } from "./actions";
 import { IdeaPanel } from "./idea-panel";
 import { QuickCapture } from "./quick-capture";
 import {
@@ -200,14 +201,14 @@ type IdeaRowProps = {
 
 function IdeaRow({ idea, selected, href, now }: IdeaRowProps) {
   return (
-    <li>
+    <li className="relative">
       <Link
         href={href}
         scroll={false}
         aria-current={selected ? "true" : undefined}
         className={`flex items-center gap-4 rounded-2xl border px-[18px] py-3.5 transition-colors ${
           selected
-            ? "border-accent bg-surface-2 shadow-[0_0_20px_rgb(158_107_255/0.22)]"
+            ? "border-accent bg-surface-2 pr-60 shadow-[0_0_20px_rgb(158_107_255/0.22)]"
             : "border-border-soft bg-surface-1 hover:border-border-strong"
         }`}
       >
@@ -232,6 +233,19 @@ function IdeaRow({ idea, selected, href, now }: IdeaRowProps) {
           </div>
         </div>
       </Link>
+      {selected && (
+        <form
+          action={makeProject.bind(null, idea.id)}
+          className="-translate-y-1/2 absolute top-1/2 right-[18px]"
+        >
+          <button
+            type="submit"
+            className="rounded-xl border border-border-strong bg-surface-3 px-[18px] py-2.5 font-bold font-heading text-[13px] text-accent-glow tracking-[0.78px] hover:border-accent"
+          >
+            Make video project →
+          </button>
+        </form>
+      )}
     </li>
   );
 }

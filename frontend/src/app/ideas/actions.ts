@@ -1,11 +1,13 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import {
   addIdeaCategory,
   type CategoryColour,
   createIdea,
   deleteIdea,
+  makeVideoProject,
   removeIdeaCategory,
   updateIdea,
 } from "@/db";
@@ -36,4 +38,13 @@ export async function addCategory(
 export async function removeCategory(ideaId: string, categoryId: string) {
   await removeIdeaCategory(ideaId, categoryId);
   refresh();
+}
+
+/** Turns the idea into a video project and opens it. */
+export async function makeProject(ideaId: string) {
+  const project = await makeVideoProject(ideaId);
+  if (!project) return;
+  // The redirect lands on a new route; purge cached routes and the sidebar.
+  revalidatePath("/", "layout");
+  redirect(`/projects/${project.id}`);
 }

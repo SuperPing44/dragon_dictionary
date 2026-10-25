@@ -3,9 +3,15 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
+import { CategoryPicker } from "@/components/category-picker";
 import type { Category, CategoryColour, Idea } from "@/db/schema";
-import { removeIdea, saveIdea } from "./actions";
-import { CategoryPicker } from "./category-picker";
+import {
+  addCategory,
+  makeProject,
+  removeCategory,
+  removeIdea,
+  saveIdea,
+} from "./actions";
 
 const SAVE_DELAY_MS = 1000;
 const RATINGS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -99,10 +105,12 @@ export function IdeaPanel({
 
       <p className={LABEL}>Categories</p>
       <CategoryPicker
-        ideaId={idea.id}
+        label="Categories of this idea"
         assigned={idea.categories}
         all={allCategories}
         defaultColour={defaultColour}
+        onAdd={(pick) => addCategory(idea.id, pick)}
+        onRemove={(categoryId) => removeCategory(idea.id, categoryId)}
       />
 
       <div className="mt-4 flex items-center justify-end gap-2.5">
@@ -127,13 +135,22 @@ export function IdeaPanel({
             </button>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={() => setConfirmingDelete(true)}
-            className={`${BUTTON} text-danger hover:bg-danger/10`}
-          >
-            Delete
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => makeProject(idea.id)}
+              className={`${BUTTON} flex-1 bg-accent text-canvas shadow-[0_4px_9px_rgb(157_107_255/0.45)]`}
+            >
+              ✦ Make video project
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              className={`${BUTTON} text-danger hover:bg-danger/10`}
+            >
+              Delete
+            </button>
+          </>
         )}
       </div>
     </aside>
