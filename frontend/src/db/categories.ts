@@ -8,6 +8,7 @@ import {
   category,
   idea,
   ideaCategory,
+  projectCategory,
 } from "./schema";
 
 export function isCategoryColour(value: unknown): value is CategoryColour {
@@ -159,19 +160,21 @@ export type CategoryWithUsage = Category & {
 
 /** All categories A–Z with how many items use each. */
 export function listCategoriesWithUsage(db: Db): CategoryWithUsage[] {
-  const ideaCounts = new Map(
-    db
-      .select({ id: ideaCategory.category, n: count() })
-      .from(ideaCategory)
-      .groupBy(ideaCategory.category)
-      .all()
-      .map((r) => [r.id, r.n]),
-  );
-  // Video projects arrive with their own ticket.
+  const countsBy = (table: typeof ideaCategory | typeof projectCategory) =>
+    new Map(
+      db
+        .select({ id: table.category, n: count() })
+        .from(table)
+        .groupBy(table.category)
+        .all()
+        .map((r) => [r.id, r.n]),
+    );
+  const ideaCounts = countsBy(ideaCategory);
+  const projectCounts = countsBy(projectCategory);
   return listCategories(db).map((c) => ({
     ...c,
     ideas: ideaCounts.get(c.id) ?? 0,
-    videoProjects: 0,
+    videoProjects: projectCounts.get(c.id) ?? 0,
   }));
 }
 
@@ -212,6 +215,10 @@ export function mergeCategory(db: Db, fromId: string, intoId: string): void {
     tx.run(sql`
       insert or ignore into ${ideaCategory} (idea, category)
       select idea, ${intoId} from ${ideaCategory} where category = ${fromId}
+    `);
+    tx.run(sql`
+      insert or ignore into ${projectCategory} (project, category)
+      select project, ${intoId} from ${projectCategory} where category = ${fromId}
     `);
     tx.delete(category).where(eq(category.id, fromId)).run();
   });

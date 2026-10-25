@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { Suspense } from "react";
 import { type SidebarCounts, sidebarCounts } from "@/db";
-import { NavLink } from "./nav-link";
+import { NavLink, NavLinkView } from "./nav-link";
 
 const ENTRIES = [
   {
@@ -54,7 +54,7 @@ export function Sidebar() {
       </p>
       <div className="h-3.5" />
       <nav className="flex flex-col gap-1.5">
-        <Suspense fallback={<NavEntries />}>
+        <Suspense fallback={<NavEntries placeholder />}>
           <CountedNavEntries />
         </Suspense>
       </nav>
@@ -66,9 +66,16 @@ async function CountedNavEntries() {
   return <NavEntries counts={await sidebarCounts()} />;
 }
 
-function NavEntries({ counts }: { counts?: SidebarCounts }) {
+function NavEntries({
+  counts,
+  placeholder,
+}: {
+  counts?: SidebarCounts;
+  placeholder?: boolean;
+}) {
+  const Entry = placeholder ? NavLinkView : NavLink;
   return ENTRIES.map((entry) => (
-    <NavLink
+    <Entry
       key={entry.href}
       href={entry.href}
       label={entry.label}

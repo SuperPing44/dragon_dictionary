@@ -11,10 +11,22 @@ type NavLinkProps = {
   count?: number;
 };
 
-export function NavLink({ href, label, icon, count }: NavLinkProps) {
+/** A sidebar entry, highlighted when the current URL is inside it. */
+export function NavLink(props: NavLinkProps) {
   const pathname = usePathname();
-  const active = pathname === href || pathname.startsWith(`${href}/`);
+  const active =
+    pathname === props.href || pathname.startsWith(`${props.href}/`);
+  return <NavLinkView {...props} active={active} />;
+}
 
+/** A sidebar entry that doesn't read the URL (used while it streams in). */
+export function NavLinkView({
+  href,
+  label,
+  icon,
+  count,
+  active = false,
+}: NavLinkProps & { active?: boolean }) {
   return (
     <Link
       href={href}

@@ -2,6 +2,7 @@ import { io } from "next/cache";
 import * as categoryQueries from "./categories";
 import { getDb } from "./connection";
 import * as ideaQueries from "./ideas";
+import * as projectQueries from "./projects";
 import type { Category, CategoryColour } from "./schema";
 
 // Every query goes through here. better-sqlite3 is synchronous, so each read
@@ -93,24 +94,79 @@ export async function nextCategoryColour() {
   return categoryQueries.nextCategoryColour(getDb());
 }
 
-/** Adds an existing category, or a new one by name (an existing name wins). */
-export async function addIdeaCategory(
-  ideaId: string,
-  pick: { categoryId: string } | { name: string; colour: CategoryColour },
-): Promise<Category | undefined> {
-  await io();
+export type CategoryPick =
+  | { categoryId: string }
+  | { name: string; colour: CategoryColour };
+
+/** An existing category, or a new one by name (an existing name wins). */
+function resolveCategoryPick(pick: CategoryPick): Category | undefined {
   const db = getDb();
-  const target =
-    "categoryId" in pick
-      ? categoryQueries.listCategories(db).find((c) => c.id === pick.categoryId)
-      : categoryQueries.createCategory(db, pick.name, pick.colour);
-  if (target) categoryQueries.addIdeaCategory(db, ideaId, target.id);
+  return "categoryId" in pick
+    ? categoryQueries.listCategories(db).find((c) => c.id === pick.categoryId)
+    : categoryQueries.createCategory(db, pick.name, pick.colour);
+}
+
+export async function addIdeaCategory(ideaId: string, pick: CategoryPick) {
+  await io();
+  const target = resolveCategoryPick(pick);
+  if (target) categoryQueries.addIdeaCategory(getDb(), ideaId, target.id);
   return target;
 }
 
 export async function removeIdeaCategory(ideaId: string, categoryId: string) {
   await io();
   categoryQueries.removeIdeaCategory(getDb(), ideaId, categoryId);
+}
+
+export async function makeVideoProject(ideaId: string) {
+  await io();
+  return projectQueries.makeVideoProject(getDb(), ideaId);
+}
+
+export async function listVideoProjects() {
+  await io();
+  return projectQueries.listVideoProjects(getDb());
+}
+
+export async function getVideoProject(id: string) {
+  await io();
+  return projectQueries.getVideoProject(getDb(), id);
+}
+
+export async function listSections(projectId: string) {
+  await io();
+  return projectQueries.listSections(getDb(), projectId);
+}
+
+export async function updateVideoProject(
+  id: string,
+  changes: projectQueries.VideoProjectChanges,
+) {
+  await io();
+  return projectQueries.updateVideoProject(getDb(), id, changes);
+}
+
+export async function addProjectCategory(
+  projectId: string,
+  pick: CategoryPick,
+) {
+  await io();
+  const target = resolveCategoryPick(pick);
+  if (target) projectQueries.addProjectCategory(getDb(), projectId, target.id);
+  return target;
+}
+
+export async function removeProjectCategory(
+  projectId: string,
+  categoryId: string,
+) {
+  await io();
+  projectQueries.removeProjectCategory(getDb(), projectId, categoryId);
+}
+
+export async function deleteVideoProject(id: string) {
+  await io();
+  projectQueries.deleteVideoProject(getDb(), id);
 }
 
 export type SidebarCounts = {
@@ -123,10 +179,10 @@ export type SidebarCounts = {
 export async function sidebarCounts(): Promise<SidebarCounts> {
   await io();
   const db = getDb();
-  // Video projects and sources arrive with their own tickets.
+  // Sources arrive with their own ticket.
   return {
     ideas: ideaQueries.countIdeas(db),
-    videoProjects: 0,
+    videoProjects: projectQueries.countVideoProjects(db),
     sources: 0,
     categories: categoryQueries.countCategories(db),
   };
@@ -134,9 +190,16 @@ export async function sidebarCounts(): Promise<SidebarCounts> {
 
 export type { CategoryWithUsage, RenameResult } from "./categories";
 export { IDEA_SORTS, type IdeaSort } from "./ideas";
+export type { VideoProjectWithCategories } from "./projects";
 export {
   CATEGORY_COLOURS,
   type Category,
   type CategoryColour,
   type Idea,
+  SECTION_KINDS,
+  type Section,
+  type SectionKind,
+  VIDEO_STAGES,
+  type VideoProject,
+  type VideoStage,
 } from "./schema";
