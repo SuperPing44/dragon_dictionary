@@ -1,21 +1,43 @@
-import { asc, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, inArray, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Db } from "./connection";
-import { type Idea, idea } from "./schema";
+import { type Idea, idea, ideaCategory } from "./schema";
 
 export const IDEA_SORTS = ["rating", "newest", "title"] as const;
 export type IdeaSort = (typeof IDEA_SORTS)[number];
 
-/** Rating (default), newest first or title A–Z; ties always go to the newest. */
-export function listIdeas(db: Db, sort: IdeaSort = "rating"): Idea[] {
+/**
+ * Rating (default), newest first or title A–Z; ties always go to the newest.
+ * With categories given, only ideas that have any of them (OR).
+ */
+export function listIdeas(
+  db: Db,
+  sort: IdeaSort = "rating",
+  categoryIds: string[] = [],
+): Idea[] {
   const order = {
     rating: [sql`${idea.rating} is null`, desc(idea.rating)],
     newest: [],
     title: [asc(sql`${idea.title} collate nocase`)],
   }[sort];
+  const filter =
+    categoryIds.length > 0
+      ? exists(
+          db
+            .select({ one: sql`1` })
+            .from(ideaCategory)
+            .where(
+              and(
+                eq(ideaCategory.idea, idea.id),
+                inArray(ideaCategory.category, categoryIds),
+              ),
+            ),
+        )
+      : undefined;
   return db
     .select()
     .from(idea)
+    .where(filter)
     .orderBy(...order, desc(idea.created))
     .all();
 }

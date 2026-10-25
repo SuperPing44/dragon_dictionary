@@ -1,16 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { ideaHref, parseIdeaSearch } from "./search";
+import { ideaHref, parseIdeaSearch, toggleCat } from "./search";
 
 describe("parseIdeaSearch", () => {
-  it("defaults to rating with nothing selected", () => {
-    expect(parseIdeaSearch({})).toEqual({ sort: "rating", idea: undefined });
+  it("defaults to rating, nothing selected, no filter", () => {
+    expect(parseIdeaSearch({})).toEqual({
+      sort: "rating",
+      idea: undefined,
+      cats: [],
+    });
   });
 
-  it("reads a known sort and the selected idea", () => {
-    expect(parseIdeaSearch({ sort: "title", idea: "abc" })).toEqual({
-      sort: "title",
-      idea: "abc",
-    });
+  it("reads a known sort, the selected idea and the filter", () => {
+    expect(
+      parseIdeaSearch({ sort: "title", idea: "abc", cat: ["c1", "c2", "c1"] }),
+    ).toEqual({ sort: "title", idea: "abc", cats: ["c1", "c2"] });
+  });
+
+  it("accepts a single category", () => {
+    expect(parseIdeaSearch({ cat: "c1" }).cats).toEqual(["c1"]);
   });
 
   it("ignores an unknown sort", () => {
@@ -20,12 +27,19 @@ describe("parseIdeaSearch", () => {
 
 describe("ideaHref", () => {
   it("leaves defaults out", () => {
-    expect(ideaHref({ sort: "rating" })).toBe("/ideas");
+    expect(ideaHref({ sort: "rating", cats: [] })).toBe("/ideas");
   });
 
-  it("keeps sort and selection", () => {
-    expect(ideaHref({ sort: "newest", idea: "abc" })).toBe(
-      "/ideas?sort=newest&idea=abc",
+  it("keeps sort, filter and selection", () => {
+    expect(ideaHref({ sort: "newest", idea: "abc", cats: ["c1", "c2"] })).toBe(
+      "/ideas?sort=newest&cat=c1&cat=c2&idea=abc",
     );
+  });
+});
+
+describe("toggleCat", () => {
+  it("adds and removes a category", () => {
+    expect(toggleCat(["a"], "b")).toEqual(["a", "b"]);
+    expect(toggleCat(["a", "b"], "a")).toEqual(["b"]);
   });
 });
