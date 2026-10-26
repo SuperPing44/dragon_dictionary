@@ -61,8 +61,7 @@ async function ProjectShell({
       <ProjectTabs
         projectId={project.id}
         projectTitle={project.title}
-        // Linked sources arrive with the Sources tab.
-        sourceCount={0}
+        sourceCount={project.sourceCount}
       />
       {children}
     </>

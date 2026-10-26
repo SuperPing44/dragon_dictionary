@@ -11,7 +11,7 @@ import {
   type SourceErrors,
   type SourceInput,
 } from "@/lib/sources";
-import { deleteSourceAction, saveSource } from "./actions";
+import { deleteSourceAction, linkExistingAction, saveSource } from "./actions";
 
 type LinkEntry = { id: string; title: string; link: string };
 
@@ -23,6 +23,10 @@ type SourceFormProps = {
   subtitle: string;
   /** Cards beside the form: PDFs, quotes, linked projects. */
   aside: React.ReactNode;
+  /** A new source created from a project, which it is linked to on save. */
+  linkTo?: { id: string; title: string };
+  /** A title to start a new source with, e.g. what was searched for. */
+  initialTitle?: string;
 };
 
 const LABEL =
@@ -32,9 +36,9 @@ const BOX =
 const BUTTON =
   "rounded-xl px-[18px] py-2.5 font-bold font-heading text-[13px] tracking-[0.78px]";
 
-const empty = (s?: Source): SourceInput => ({
+const empty = (s?: Source, title = ""): SourceInput => ({
   type: s?.type ?? "website",
-  title: s?.title ?? "",
+  title: s?.title ?? title,
   author: s?.author ?? "",
   link: s?.link ?? "",
   publisher: s?.publisher ?? "",
@@ -48,8 +52,13 @@ export function SourceForm({
   links,
   subtitle,
   aside,
+  linkTo,
+  initialTitle,
 }: SourceFormProps) {
-  const [input, setInput] = useState<SourceInput>(() => empty(source));
+  const [input, setInput] = useState<SourceInput>(() =>
+    empty(source, initialTitle),
+  );
+  const backHref = linkTo ? `/projects/${linkTo.id}/sources` : "/sources";
   const [errors, setErrors] = useState<SourceErrors>({});
   const [saved, setSaved] = useState(false);
   const [keepBoth, setKeepBoth] = useState<string | null>(null);
@@ -70,7 +79,7 @@ export function SourceForm({
   function save(event: React.FormEvent) {
     event.preventDefault();
     startSaving(async () => {
-      const result = await saveSource(source?.id ?? null, input);
+      const result = await saveSource(source?.id ?? null, input, linkTo?.id);
       if (result.ok) {
         setErrors({});
         setSaved(true);
@@ -81,10 +90,10 @@ export function SourceForm({
   return (
     <form onSubmit={save} noValidate className="flex flex-col gap-4">
       <Link
-        href="/sources"
+        href={backHref}
         className="self-start font-label font-medium text-[13px] text-accent-glow hover:underline"
       >
-        ← Source library
+        {linkTo ? `← ${linkTo.title}` : "← Source library"}
       </Link>
       <div className="flex items-center gap-3">
         <PageHeader
@@ -106,7 +115,7 @@ export function SourceForm({
             Delete source
           </button>
         )}
-        <Link href="/sources" className={`${BUTTON} text-accent-glow`}>
+        <Link href={backHref} className={`${BUTTON} text-accent-glow`}>
           Cancel
         </Link>
         <button
@@ -207,12 +216,26 @@ export function SourceForm({
               <p className="flex-1 text-[16px] text-fg">
                 This link is already in the library as “{duplicate.title}”.
               </p>
-              <Link
-                href={`/sources/${duplicate.id}`}
-                className={`${BUTTON} border border-border-strong bg-surface-3 text-accent-glow`}
-              >
-                Open existing
-              </Link>
+              {linkTo ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    startSaving(() =>
+                      linkExistingAction(linkTo.id, duplicate.id),
+                    )
+                  }
+                  className={`${BUTTON} border border-border-strong bg-surface-3 text-accent-glow`}
+                >
+                  Link existing instead
+                </button>
+              ) : (
+                <Link
+                  href={`/sources/${duplicate.id}`}
+                  className={`${BUTTON} border border-border-strong bg-surface-3 text-accent-glow`}
+                >
+                  Open existing
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={() => setKeepBoth(typedLink)}

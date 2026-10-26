@@ -84,7 +84,7 @@ async function ProjectList() {
                       width={16}
                       height={16}
                     />
-                    {/* Linked sources arrive with the Sources tab. */}0
+                    {p.sourceCount}
                   </div>
                   <Image
                     src="/design/icon-arrow.svg"

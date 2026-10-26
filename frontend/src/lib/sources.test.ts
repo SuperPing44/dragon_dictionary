@@ -3,6 +3,7 @@ import {
   isLink,
   isPartialDate,
   normalizeLink,
+  sourceList,
   validateSource,
 } from "./sources";
 
@@ -102,5 +103,31 @@ describe("validateSource", () => {
         date: expect.any(String),
       },
     });
+  });
+});
+
+describe("sourceList", () => {
+  it("lists sources with a link as 'Title – link', in order", () => {
+    expect(
+      sourceList([
+        {
+          title: "Völuspá",
+          link: "https://sacred-texts.com/neu/poe/poe03.htm",
+        },
+        { title: "The Poetic Edda", link: null },
+        { title: "God of War — myths", link: "https://youtu.be/xY3kq9" },
+      ]),
+    ).toEqual({
+      text: "Völuspá – https://sacred-texts.com/neu/poe/poe03.htm\nGod of War — myths – https://youtu.be/xY3kq9",
+      lines: [
+        "Völuspá – https://sacred-texts.com/neu/poe/poe03.htm",
+        "God of War — myths – https://youtu.be/xY3kq9",
+      ],
+      leftOut: 1,
+    });
+  });
+
+  it("is empty without sources", () => {
+    expect(sourceList([])).toEqual({ text: "", lines: [], leftOut: 0 });
   });
 });

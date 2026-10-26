@@ -14,6 +14,7 @@ import { v7 as uuidv7 } from "uuid";
 import { normalizeLink, type SourceValues } from "@/lib/sources";
 import type { Db } from "./connection";
 import { sourceDir } from "./files";
+import { projectCountsBySource } from "./project-sources";
 import { SOURCE_TYPES, type Source, type SourceType, source } from "./schema";
 
 export const SOURCE_SORTS = ["title", "newest"] as const;
@@ -53,19 +54,24 @@ export function listSources(
     sort === "newest"
       ? [desc(source.created)]
       : [asc(sql`${source.title} collate nocase`), desc(source.created)];
-  // Linked projects arrive with the Sources tab.
-  return db
+  const rows = db
     .select()
     .from(source)
     .where(and(...filters))
     .orderBy(...order)
-    .all()
-    .map((s) => ({ ...s, projects: 0 }));
+    .all();
+  const counts = projectCountsBySource(db);
+  return rows.map((s) => ({ ...s, projects: counts.get(s.id) ?? 0 }));
 }
 
 export function getSource(db: Db, id: string): SourceWithProjects | undefined {
   const found = db.select().from(source).where(eq(source.id, id)).get();
-  return found && { ...found, projects: 0 };
+  return (
+    found && {
+      ...found,
+      projects: projectCountsBySource(db, [id]).get(id) ?? 0,
+    }
+  );
 }
 
 export function createSource(

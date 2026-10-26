@@ -120,3 +120,23 @@ export function validateSource(
     },
   };
 }
+
+/**
+ * The source list for a video description: one "Title – link" line per
+ * linked source that has a link, in link order. Also says how many were
+ * left out for having no link.
+ */
+export function sourceList(sources: { title: string; link: string | null }[]): {
+  text: string;
+  lines: string[];
+  leftOut: number;
+} {
+  const lines = sources.flatMap((s) =>
+    s.link ? [`${s.title} – ${s.link}`] : [],
+  );
+  return {
+    text: lines.join("\n"),
+    lines,
+    leftOut: sources.length - lines.length,
+  };
+}
