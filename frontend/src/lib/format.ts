@@ -169,3 +169,21 @@ export function formatBytes(bytes: number): string {
   const mb = bytes / 1_000_000;
   return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
 }
+
+/** When a backup ran: "Today, 09:12", "Yesterday, 18:40" or "21 Oct 2026, 09:12". */
+export function backupWhen(iso: string, now = new Date()): string {
+  const date = new Date(iso);
+  const time = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  const days = calendarDaysBetween(date, now);
+  const day =
+    days === 0 ? "Today" : days === 1 ? "Yesterday" : formatDay(iso, now);
+  return `${day}, ${time}`;
+}
+
+/** How old the last good backup is: "5 hours ago", "3 days ago". */
+export function backupAge(iso: string, now = new Date()): string {
+  const hours = Math.floor((now.getTime() - Date.parse(iso)) / 3_600_000);
+  if (hours < 1) return "less than an hour ago";
+  if (hours < 24) return `${plural(hours, "hour")} ago`;
+  return `${plural(Math.floor(hours / 24), "day")} ago`;
+}

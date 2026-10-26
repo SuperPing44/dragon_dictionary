@@ -8,11 +8,11 @@ export const MAX_SPEAKING_RATE = 300;
 
 const RATE_KEY = "speaking_rate";
 
-function getMeta(db: Db, key: string): string | undefined {
+export function getMeta(db: Db, key: string): string | undefined {
   return db.select().from(appMeta).where(eq(appMeta.key, key)).get()?.value;
 }
 
-function setMeta(db: Db, key: string, value: string): void {
+export function setMeta(db: Db, key: string, value: string): void {
   db.insert(appMeta)
     .values({ key, value })
     .onConflictDoUpdate({ target: appMeta.key, set: { value } })
