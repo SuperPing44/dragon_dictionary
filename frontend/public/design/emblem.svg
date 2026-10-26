@@ -1,0 +1,17 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Emblem">
+<path id="Vector" d="M22 2L39 12V32L22 42L5 32V12L22 2Z" fill="#1C1528" stroke-width="2" stroke="url(#paint0_linear_0_208)"/>
+<path id="Vector_2" d="M14 28C16 20 21 15 29 13C26 16 25 19 25 22C28 21 30 21 32 22C28 24 25 27 23 31C22 29 20 28 18 28C16 28 15 28 14 28Z" fill="url(#paint1_linear_0_208)"/>
+<path id="Vector_3" d="M26 18.7C26.6627 18.7 27.2 18.1627 27.2 17.5C27.2 16.8373 26.6627 16.3 26 16.3C25.3373 16.3 24.8 16.8373 24.8 17.5C24.8 18.1627 25.3373 18.7 26 18.7Z" fill="#0B0811"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_0_208" x1="5" y1="2" x2="44.4775" y2="35.5559" gradientUnits="userSpaceOnUse">
+<stop stop-color="#C6A6FF"/>
+<stop offset="1" stop-color="#5B34B8"/>
+</linearGradient>
+<linearGradient id="paint1_linear_0_208" x1="14" y1="13" x2="32" y2="31" gradientUnits="userSpaceOnUse">
+<stop stop-color="#C6A6FF"/>
+<stop offset="1" stop-color="#5B34B8"/>
+</linearGradient>
+</defs>
+</svg>

@@ -1,26 +1,85 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Tokens from the Figma variable collection "Dragon colours".
+ * Figma name → token: bg/base → canvas, surface/N → surface-N,
+ * border/* → border-*, accent/primary → accent, accent/* → accent-*,
+ * text/primary → fg, text/muted → fg-muted, text/faint → fg-faint,
+ * category/* → category-*. Dark theme only.
+ */
+@theme {
+  --color-canvas: #0b0811;
+  --color-surface-1: #140e1d;
+  --color-surface-2: #1c1528;
+  --color-surface-3: #271d38;
+  --color-border-strong: #3d2d5a;
+  --color-border-soft: #2a2040;
+  --color-accent: #9d6bff;
+  --color-accent-glow: #c6a6ff;
+  --color-accent-deep: #5b34b8;
+  --color-fg: #efe8fb;
+  --color-fg-muted: #aa9dc4;
+  --color-fg-faint: #6f6389;
+  --color-gold: #e9c46a;
+  --color-amber: #f2a93b;
+  --color-danger: #ff6b8a;
+
+  --font-heading: var(--font-cinzel);
+  --font-logo: var(--font-cinzel-decorative);
+  --font-body: var(--font-crimson-pro);
+  --font-label: var(--font-inter);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Always emitted: category chips pick their shade by name at runtime. */
+@theme static {
+  --color-category-emerald: #34d399;
+  --color-category-teal: #2dd4bf;
+  --color-category-sky: #38bdf8;
+  --color-category-indigo: #818cf8;
+  --color-category-violet: #a78bfa;
+  --color-category-fuchsia: #e879f9;
+  --color-category-rose: #fb7185;
+  --color-category-red: #f87171;
+  --color-category-orange: #fb923c;
+  --color-category-amber: #fbbf24;
+  --color-category-lime: #a3e635;
+  --color-category-slate: #94a3b8;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-canvas);
+  /* The soft violet glow at the top right, over the faint starfield. */
+  background-image:
+    radial-gradient(
+      ellipse 450px 176px at calc(100% - 216px) 72px,
+      rgb(92 51 184 / 0.3),
+      rgb(51 29 101 / 0.15) 50%,
+      transparent
+    ),
+    url("/design/starfield.svg");
+  background-repeat: no-repeat;
+  background-size:
+    auto,
+    100% 100%;
+  background-attachment: fixed;
+  color: var(--color-fg);
+  font-family: var(--font-body);
+}
+
+/* Script editor (Tiptap). */
+.script-text p + p {
+  margin-top: 0.6em;
+}
+
+.script-text p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--color-fg-faint);
+  font-style: italic;
 }

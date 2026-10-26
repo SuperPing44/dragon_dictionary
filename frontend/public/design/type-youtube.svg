@@ -1,0 +1,8 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Icon/scroll">
+<path id="Vector" d="M3.75 1.875H10.625C11.1223 1.875 11.5992 2.07254 11.9508 2.42417C12.3025 2.77581 12.5 3.25272 12.5 3.75V4.375H10" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" stroke="#C6A6FF"/>
+<path id="Vector_2" d="M10 4.375V11.25C10 11.7473 9.80246 12.2242 9.45083 12.5758C9.33394 12.6927 9.20322 12.7926 9.0625 12.8738M9.0625 12.8738C8.77989 13.037 8.45698 13.125 8.125 13.125H3.75C3.25272 13.125 2.77581 12.9275 2.42417 12.5758C2.07254 12.2242 1.875 11.7473 1.875 11.25V10.625H8.125V11.25C8.125 11.7473 8.32254 12.2242 8.67417 12.5758C8.79106 12.6927 8.92179 12.7926 9.0625 12.8738ZM9.0625 12.8738C9.34511 13.037 9.66802 13.125 10 13.125" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" stroke="#C6A6FF"/>
+<path id="Vector_3" d="M3.75 1.875C3.25272 1.875 2.77581 2.07254 2.42417 2.42417C2.07254 2.77581 1.875 3.25272 1.875 3.75V10.625" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" stroke="#C6A6FF"/>
+<path id="Vector_4" d="M5 5H8.125M5 7.5H8.125" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" stroke="#C6A6FF"/>
+</g>
+</svg>
