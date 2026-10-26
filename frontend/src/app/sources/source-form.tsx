@@ -270,7 +270,7 @@ function Field({
   const border = error
     ? "border-danger"
     : warn
-      ? "border-gold"
+      ? "border-gold focus:border-gold!"
       : "border-border-strong";
   return (
     <div className="flex flex-col gap-1.5">
