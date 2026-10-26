@@ -3,9 +3,12 @@
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  addQuote,
   createSource,
   deleteSource,
+  removeQuote,
   removeSourceFile,
+  updateQuote,
   updateSource,
 } from "@/db";
 import {
@@ -45,5 +48,23 @@ export async function deleteSourceAction(id: string) {
 
 export async function removeFileAction(fileId: string) {
   await removeSourceFile(fileId);
+  refresh();
+}
+
+/** Adds or edits a quote; a blank quote is refused. */
+export async function saveQuoteAction(
+  sourceId: string,
+  quoteId: string | null,
+  input: { text: string; location: string },
+) {
+  if (!input.text.trim()) return { ok: false as const };
+  if (quoteId) await updateQuote(quoteId, input);
+  else await addQuote(sourceId, input);
+  refresh();
+  return { ok: true as const };
+}
+
+export async function removeQuoteAction(quoteId: string) {
+  await removeQuote(quoteId);
   refresh();
 }
