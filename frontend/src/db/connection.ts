@@ -32,6 +32,11 @@ export function openDb(file: string): Db {
   return db;
 }
 
+/** Where uploaded PDFs live: <data folder>/files. */
+export function resolveFilesRoot(): string {
+  return path.join(resolveDataDir(), "files");
+}
+
 let instance: Db | undefined;
 
 /** The app's database, opened and migrated on first use. */

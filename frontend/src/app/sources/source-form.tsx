@@ -21,6 +21,8 @@ type SourceFormProps = {
   /** Normalized links already in the library, for the duplicate warning. */
   links: LinkEntry[];
   subtitle: string;
+  /** Cards beside the form: PDFs, quotes, linked projects. */
+  aside: React.ReactNode;
 };
 
 const LABEL =
@@ -41,7 +43,12 @@ const empty = (s?: Source): SourceInput => ({
 });
 
 /** One form for every type of source, saved with the Save button. */
-export function SourceForm({ source, links, subtitle }: SourceFormProps) {
+export function SourceForm({
+  source,
+  links,
+  subtitle,
+  aside,
+}: SourceFormProps) {
   const [input, setInput] = useState<SourceInput>(() => empty(source));
   const [errors, setErrors] = useState<SourceErrors>({});
   const [saved, setSaved] = useState(false);
@@ -144,102 +151,110 @@ export function SourceForm({ source, links, subtitle }: SourceFormProps) {
         </section>
       )}
 
-      <div className="flex max-w-[700px] flex-col gap-3.5 rounded-[18px] border border-border-soft bg-surface-1 p-6">
-        <p className={LABEL}>Type</p>
-        <fieldset className="flex flex-wrap gap-1 self-start rounded-xl border border-border-soft bg-surface-2 p-1">
-          <legend className="sr-only">Type</legend>
-          {SOURCE_TYPES.map((type: SourceType) => (
-            <button
-              key={type}
-              type="button"
-              aria-pressed={input.type === type}
-              onClick={() => set("type")(type)}
-              className={`rounded-[9px] border px-3 py-1.5 font-label font-medium text-[13px] ${
-                input.type === type
-                  ? "border-border-strong bg-surface-3 text-fg"
-                  : "border-transparent text-fg-muted hover:text-fg"
-              }`}
-            >
-              {SOURCE_TYPE_LABELS[type]}
-            </button>
-          ))}
-        </fieldset>
+      <div className="flex items-start gap-5">
+        <div className="flex min-w-0 flex-1 flex-col gap-3.5 rounded-[18px] border border-border-soft bg-surface-1 p-6">
+          <p className={LABEL}>Type</p>
+          <fieldset className="flex flex-wrap gap-1 self-start rounded-xl border border-border-soft bg-surface-2 p-1">
+            <legend className="sr-only">Type</legend>
+            {SOURCE_TYPES.map((type: SourceType) => (
+              <button
+                key={type}
+                type="button"
+                aria-pressed={input.type === type}
+                onClick={() => set("type")(type)}
+                className={`rounded-[9px] border px-3 py-1.5 font-label font-medium text-[13px] ${
+                  input.type === type
+                    ? "border-border-strong bg-surface-3 text-fg"
+                    : "border-transparent text-fg-muted hover:text-fg"
+                }`}
+              >
+                {SOURCE_TYPE_LABELS[type]}
+              </button>
+            ))}
+          </fieldset>
 
-        <Field
-          label="Title"
-          value={input.title}
-          onChange={set("title")}
-          error={errors.title}
-          autoFocus={!source}
-        />
-        <Field
-          label={input.type === "youtube" ? "Author (channel)" : "Author"}
-          value={input.author ?? ""}
-          onChange={set("author")}
-        />
-        <Field
-          label="Link"
-          value={input.link ?? ""}
-          onChange={set("link")}
-          error={errors.link}
-          warn={Boolean(duplicate)}
-          placeholder="https://"
-        />
-        {duplicate && (
-          <div
-            role="alert"
-            className="flex items-center gap-3 rounded-xl border border-gold/60 bg-gold/5 px-3.5 py-2.5"
-          >
-            <Image src="/design/icon-alert.svg" alt="" width={18} height={18} />
-            <p className="flex-1 text-[16px] text-fg">
-              This link is already in the library as “{duplicate.title}”.
-            </p>
-            <Link
-              href={`/sources/${duplicate.id}`}
-              className={`${BUTTON} border border-border-strong bg-surface-3 text-accent-glow`}
+          <Field
+            label="Title"
+            value={input.title}
+            onChange={set("title")}
+            error={errors.title}
+            autoFocus={!source}
+          />
+          <Field
+            label={input.type === "youtube" ? "Author (channel)" : "Author"}
+            value={input.author ?? ""}
+            onChange={set("author")}
+          />
+          <Field
+            label="Link"
+            value={input.link ?? ""}
+            onChange={set("link")}
+            error={errors.link}
+            warn={Boolean(duplicate)}
+            placeholder="https://"
+          />
+          {duplicate && (
+            <div
+              role="alert"
+              className="flex items-center gap-3 rounded-xl border border-gold/60 bg-gold/5 px-3.5 py-2.5"
             >
-              Open existing
-            </Link>
-            <button
-              type="button"
-              onClick={() => setKeepBoth(typedLink)}
-              className="font-label font-medium text-fg-muted text-xs hover:text-fg"
-            >
-              Keep both
-            </button>
-          </div>
-        )}
-        <div className="flex gap-3.5">
-          <div className="flex-1">
-            <Field
-              label={
-                input.type === "paper" ? "Publisher (journal)" : "Publisher"
-              }
-              value={input.publisher ?? ""}
-              onChange={set("publisher")}
-            />
-          </div>
-          <div className="flex flex-1 flex-col gap-1">
-            <Field
-              label="Date"
-              value={input.date ?? ""}
-              onChange={set("date")}
-              error={errors.date}
-              placeholder="1220, 1220-05 or 1220-05-03"
-            />
-            {!errors.date && (
-              <p className="font-label text-[11px] text-fg-faint">
-                Year, year and month, or a full date
+              <Image
+                src="/design/icon-alert.svg"
+                alt=""
+                width={18}
+                height={18}
+              />
+              <p className="flex-1 text-[16px] text-fg">
+                This link is already in the library as “{duplicate.title}”.
               </p>
-            )}
+              <Link
+                href={`/sources/${duplicate.id}`}
+                className={`${BUTTON} border border-border-strong bg-surface-3 text-accent-glow`}
+              >
+                Open existing
+              </Link>
+              <button
+                type="button"
+                onClick={() => setKeepBoth(typedLink)}
+                className="font-label font-medium text-fg-muted text-xs hover:text-fg"
+              >
+                Keep both
+              </button>
+            </div>
+          )}
+          <div className="flex gap-3.5">
+            <div className="flex-1">
+              <Field
+                label={
+                  input.type === "paper" ? "Publisher (journal)" : "Publisher"
+                }
+                value={input.publisher ?? ""}
+                onChange={set("publisher")}
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-1">
+              <Field
+                label="Date"
+                value={input.date ?? ""}
+                onChange={set("date")}
+                error={errors.date}
+                placeholder="1220, 1220-05 or 1220-05-03"
+              />
+              {!errors.date && (
+                <p className="font-label text-[11px] text-fg-faint">
+                  Year, year and month, or a full date
+                </p>
+              )}
+            </div>
           </div>
+          <Field
+            label="Note"
+            value={input.note ?? ""}
+            onChange={set("note")}
+            multiline
+          />
         </div>
-        <Field
-          label="Note"
-          value={input.note ?? ""}
-          onChange={set("note")}
-          multiline
-        />
+        <div className="flex w-[420px] shrink-0 flex-col gap-4">{aside}</div>
       </div>
     </form>
   );

@@ -174,3 +174,16 @@ export const source = sqliteTable("source", {
 });
 
 export type Source = typeof source.$inferSelect;
+
+/** A PDF attached to a source, stored as files/<source-id>/<file-id>.pdf. */
+export const sourceFile = sqliteTable("source_file", {
+  id: text("id").primaryKey(),
+  source: text("source")
+    .notNull()
+    .references(() => source.id, { onDelete: "cascade" }),
+  originalName: text("original_name").notNull(),
+  size: integer("size").notNull(),
+  uploaded: text("uploaded").notNull(),
+});
+
+export type SourceFile = typeof sourceFile.$inferSelect;

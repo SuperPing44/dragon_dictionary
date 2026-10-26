@@ -1,7 +1,11 @@
+import { rm } from "node:fs/promises";
+import type { Readable } from "node:stream";
 import { io } from "next/cache";
+import { v7 as uuidv7 } from "uuid";
 import type { SourceValues } from "@/lib/sources";
 import * as categoryQueries from "./categories";
-import { getDb } from "./connection";
+import { getDb, resolveFilesRoot } from "./connection";
+import * as fileQueries from "./files";
 import * as ideaQueries from "./ideas";
 import * as metaQueries from "./meta";
 import * as projectQueries from "./projects";
@@ -239,7 +243,55 @@ export async function updateSource(id: string, values: SourceValues) {
 
 export async function deleteSource(id: string) {
   await io();
-  sourceQueries.deleteSource(getDb(), id);
+  await sourceQueries.deleteSource(getDb(), id, resolveFilesRoot());
+}
+
+export async function listSourceFiles(sourceId: string) {
+  await io();
+  return fileQueries.listSourceFiles(getDb(), sourceId);
+}
+
+export async function getSourceFile(id: string) {
+  await io();
+  return fileQueries.getSourceFile(getDb(), id);
+}
+
+/**
+ * Stores an uploaded PDF for a source and records it. Throws NotAPdfError
+ * for anything that isn't a PDF; returns undefined for an unknown source.
+ */
+export async function uploadSourceFile(
+  sourceId: string,
+  originalName: string,
+  body: Readable,
+) {
+  await io();
+  const db = getDb();
+  if (!sourceQueries.getSource(db, sourceId)) return undefined;
+  const root = resolveFilesRoot();
+  const id = uuidv7();
+  const size = await fileQueries.storeUpload(root, sourceId, id, body);
+  try {
+    return fileQueries.addSourceFile(db, {
+      id,
+      source: sourceId,
+      originalName,
+      size,
+    });
+  } catch (error) {
+    await rm(fileQueries.filePath(root, sourceId, id), { force: true });
+    throw error;
+  }
+}
+
+/** Where a recorded PDF is on disk. */
+export function sourceFilePath(file: { id: string; source: string }) {
+  return fileQueries.filePath(resolveFilesRoot(), file.source, file.id);
+}
+
+export async function removeSourceFile(id: string) {
+  await io();
+  await fileQueries.removeSourceFile(getDb(), resolveFilesRoot(), id);
 }
 
 export async function sourceLinkIndex() {
@@ -266,6 +318,7 @@ export async function sidebarCounts(): Promise<SidebarCounts> {
 }
 
 export type { CategoryWithUsage, RenameResult } from "./categories";
+export { NotAPdfError } from "./files";
 export { IDEA_SORTS, type IdeaSort } from "./ideas";
 export type { VideoProjectWithCategories } from "./projects";
 export {
@@ -278,6 +331,7 @@ export {
   type SectionKind,
   SOURCE_TYPES,
   type Source,
+  type SourceFile,
   type SourceType,
   VIDEO_STAGES,
   type VideoProject,

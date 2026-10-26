@@ -161,3 +161,11 @@ export function sourceCountLine(n: number): string {
   const capitalised = words.charAt(0).toUpperCase() + words.slice(1);
   return `${capitalised} ${n === 1 ? "source" : "sources"}, one shared hoard`;
 }
+
+/** A file size as people read it: "860 KB", "2.4 MB". */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1000) return `${bytes} B`;
+  if (bytes < 1_000_000) return `${Math.round(bytes / 1000)} KB`;
+  const mb = bytes / 1_000_000;
+  return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   editedLine,
+  formatBytes,
   formatDay,
   ideaCountLine,
   numberInWords,
@@ -126,5 +127,16 @@ describe("wordsLine", () => {
   it("pluralises and groups thousands", () => {
     expect(wordsLine(1)).toBe("1 word");
     expect(wordsLine(2180)).toBe("2,180 words");
+  });
+});
+
+describe("formatBytes", () => {
+  it.each([
+    [512, "512 B"],
+    [860_000, "860 KB"],
+    [2_400_000, "2.4 MB"],
+    [48_600_000, "49 MB"],
+  ])("%i → %s", (bytes, text) => {
+    expect(formatBytes(bytes)).toBe(text);
   });
 });
