@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Db } from "./connection";
+import { sourceCountsByProject } from "./project-sources";
 import {
   type Category,
   category,
@@ -26,6 +27,8 @@ export type VideoProjectWithCategories = VideoProject & {
   categories: Category[];
   /** All sections' words, for the speaking-time estimate. */
   wordCount: number;
+  /** How many sources are linked. */
+  sourceCount: number;
 };
 
 /** Total words per project, keyed by project ID. */
@@ -124,10 +127,12 @@ export function listVideoProjects(db: Db): VideoProjectWithCategories[] {
   const ids = projects.map((p) => p.id);
   const byProject = categoriesByProject(db, ids);
   const words = wordsByProject(db, ids);
+  const sources = sourceCountsByProject(db, ids);
   return projects.map((p) => ({
     ...p,
     categories: byProject.get(p.id) ?? [],
     wordCount: words.get(p.id) ?? 0,
+    sourceCount: sources.get(p.id) ?? 0,
   }));
 }
 
@@ -145,6 +150,7 @@ export function getVideoProject(
     ...project,
     categories: categoriesByProject(db, [id]).get(id) ?? [],
     wordCount: wordsByProject(db, [id]).get(id) ?? 0,
+    sourceCount: sourceCountsByProject(db, [id]).get(id) ?? 0,
   };
 }
 

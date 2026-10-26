@@ -200,3 +200,21 @@ export const quote = sqliteTable("quote", {
 });
 
 export type Quote = typeof quote.$inferSelect;
+
+/** A source linked to a video project; `linked` sets the source list order. */
+export const projectSource = sqliteTable(
+  "project_source",
+  {
+    project: text("project")
+      .notNull()
+      .references(() => videoProject.id, { onDelete: "cascade" }),
+    source: text("source")
+      .notNull()
+      .references(() => source.id, { onDelete: "cascade" }),
+    linked: text("linked").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.project, t.source] }),
+    index("project_source_by_source").on(t.source),
+  ],
+);

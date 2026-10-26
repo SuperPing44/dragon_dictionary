@@ -8,6 +8,7 @@ import { getDb, resolveFilesRoot } from "./connection";
 import * as fileQueries from "./files";
 import * as ideaQueries from "./ideas";
 import * as metaQueries from "./meta";
+import * as linkQueries from "./project-sources";
 import * as projectQueries from "./projects";
 import * as quoteQueries from "./quotes";
 import type { Category, CategoryColour, SectionKind } from "./schema";
@@ -288,6 +289,26 @@ export async function uploadSourceFile(
 /** Where a recorded PDF is on disk. */
 export function sourceFilePath(file: { id: string; source: string }) {
   return fileQueries.filePath(resolveFilesRoot(), file.source, file.id);
+}
+
+export async function linkSource(projectId: string, sourceId: string) {
+  await io();
+  linkQueries.linkSource(getDb(), projectId, sourceId);
+}
+
+export async function unlinkSource(projectId: string, sourceId: string) {
+  await io();
+  linkQueries.unlinkSource(getDb(), projectId, sourceId);
+}
+
+export async function listProjectSources(projectId: string) {
+  await io();
+  return linkQueries.listProjectSources(getDb(), projectId);
+}
+
+export async function projectsOfSource(sourceId: string) {
+  await io();
+  return linkQueries.projectsOfSource(getDb(), sourceId);
 }
 
 export async function listQuotes(sourceId: string) {

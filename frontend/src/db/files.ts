@@ -1,3 +1,4 @@
+import { once } from "node:events";
 import { createWriteStream } from "node:fs";
 import { mkdir, rename, rm } from "node:fs/promises";
 import path from "node:path";
@@ -67,7 +68,10 @@ export async function storeUpload(
     await rename(partial, final);
     return size;
   } catch (error) {
+    // The file is opened asynchronously: wait until the stream has closed,
+    // or removing it could happen before it exists and leave it behind.
     out.destroy();
+    if (!out.closed) await once(out, "close");
     await rm(partial, { force: true });
     throw error;
   }

@@ -6,7 +6,9 @@ import type { CategoryPick } from "@/components/category-picker";
 import {
   addProjectCategory,
   deleteVideoProject,
+  linkSource,
   removeProjectCategory,
+  unlinkSource,
   updateVideoProject,
 } from "@/db";
 import type { VideoProjectChanges } from "@/db/projects";
@@ -34,4 +36,14 @@ export async function deleteProject(id: string) {
   // The redirect lands on a cached route; purge it and the sidebar.
   revalidatePath("/", "layout");
   redirect("/projects");
+}
+
+export async function linkSourceAction(projectId: string, sourceId: string) {
+  await linkSource(projectId, sourceId);
+  refresh();
+}
+
+export async function unlinkSourceAction(projectId: string, sourceId: string) {
+  await unlinkSource(projectId, sourceId);
+  refresh();
 }

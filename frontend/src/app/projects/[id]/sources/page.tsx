@@ -1,8 +1,29 @@
-/** The Sources tab. Linking sources arrives with its own ticket. */
-export default function SourcesTab() {
+import { Suspense } from "react";
+import { listProjectSources, listSources } from "@/db";
+import { SourcesTab } from "./sources-tab";
+
+/** The Sources tab. */
+export default function SourcesTabPage({
+  params,
+}: PageProps<"/projects/[id]/sources">) {
   return (
-    <p className="text-[17px] text-fg-muted italic">
-      No sources linked yet. Linking sources from the library is coming soon.
-    </p>
+    <Suspense>
+      <Sources params={params} />
+    </Suspense>
+  );
+}
+
+async function Sources({
+  params,
+}: {
+  params: PageProps<"/projects/[id]/sources">["params"];
+}) {
+  const { id } = await params;
+  return (
+    <SourcesTab
+      projectId={id}
+      linked={await listProjectSources(id)}
+      library={await listSources()}
+    />
   );
 }
