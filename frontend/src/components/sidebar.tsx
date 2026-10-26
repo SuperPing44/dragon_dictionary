@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Suspense } from "react";
 import { type SidebarCounts, sidebarCounts } from "@/db";
+import { BackupCard } from "./backup-card";
 import { NavLink, NavLinkView } from "./nav-link";
 
 const ENTRIES = [
@@ -58,6 +59,8 @@ export function Sidebar() {
           <CountedNavEntries />
         </Suspense>
       </nav>
+      <span className="flex-1" />
+      <BackupCard />
     </aside>
   );
 }

@@ -3,8 +3,9 @@ import type { Readable } from "node:stream";
 import { io } from "next/cache";
 import { v7 as uuidv7 } from "uuid";
 import type { SourceValues } from "@/lib/sources";
+import * as backupQueries from "./backup";
 import * as categoryQueries from "./categories";
-import { getDb, resolveFilesRoot } from "./connection";
+import { getDb, resolveDataDir, resolveFilesRoot } from "./connection";
 import * as fileQueries from "./files";
 import * as ideaQueries from "./ideas";
 import * as metaQueries from "./meta";
@@ -344,6 +345,20 @@ export async function sourceLinkIndex() {
   return sourceQueries.linkIndex(getDb());
 }
 
+export async function getBackupStatus() {
+  await io();
+  return backupQueries.backupStatus(getDb());
+}
+
+/** Backs up now (Back up now in the sidebar) and records the outcome. */
+export async function backUpNow() {
+  await io();
+  return backupQueries.backUp(getDb(), {
+    dataDir: resolveDataDir(),
+    backupDir: backupQueries.resolveBackupDir(),
+  });
+}
+
 export type SidebarCounts = {
   ideas: number;
   videoProjects: number;
@@ -362,6 +377,7 @@ export async function sidebarCounts(): Promise<SidebarCounts> {
   };
 }
 
+export type { BackupResult, BackupStatus } from "./backup";
 export type { CategoryWithUsage, RenameResult } from "./categories";
 export { NotAPdfError } from "./files";
 export { IDEA_SORTS, type IdeaSort } from "./ideas";

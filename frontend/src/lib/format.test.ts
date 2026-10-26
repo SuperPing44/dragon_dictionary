@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  backupAge,
+  backupWhen,
   editedLine,
   formatBytes,
   formatDay,
@@ -138,5 +140,28 @@ describe("formatBytes", () => {
     [48_600_000, "49 MB"],
   ])("%i → %s", (bytes, text) => {
     expect(formatBytes(bytes)).toBe(text);
+  });
+});
+
+describe("backupWhen", () => {
+  const now = new Date(2026, 9, 26, 15, 0);
+  it.each([
+    [new Date(2026, 9, 26, 9, 12), "Today, 09:12"],
+    [new Date(2026, 9, 25, 18, 40), "Yesterday, 18:40"],
+    [new Date(2026, 9, 21, 9, 5), "21 Oct 2026, 09:05"],
+  ])("%s → %s", (date, text) => {
+    expect(backupWhen(date.toISOString(), now)).toBe(text);
+  });
+});
+
+describe("backupAge", () => {
+  const now = new Date(2026, 9, 26, 15, 0);
+  it.each([
+    [new Date(2026, 9, 26, 14, 30), "less than an hour ago"],
+    [new Date(2026, 9, 26, 10, 0), "5 hours ago"],
+    [new Date(2026, 9, 25, 14, 0), "1 day ago"],
+    [new Date(2026, 9, 23, 9, 0), "3 days ago"],
+  ])("%s → %s", (date, text) => {
+    expect(backupAge(date.toISOString(), now)).toBe(text);
   });
 });
