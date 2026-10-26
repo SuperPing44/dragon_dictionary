@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getSource, listSourceFiles, sourceLinkIndex } from "@/db";
+import { getSource, listQuotes, listSourceFiles, sourceLinkIndex } from "@/db";
 import { formatDay } from "@/lib/format";
 import { SOURCE_TYPE_LABELS } from "@/lib/sources";
 import { SourceForm } from "../source-form";
 import { SourcePdfs } from "../source-pdfs";
+import { SourceQuotes } from "../source-quotes";
 
 export default function SourcePage({ params }: PageProps<"/sources/[id]">) {
   return (
@@ -30,7 +31,10 @@ async function SourceDetails({
       links={await sourceLinkIndex()}
       subtitle={`${SOURCE_TYPE_LABELS[source.type]} · added ${added === "Today" ? "today" : added}`}
       aside={
-        <SourcePdfs sourceId={source.id} files={await listSourceFiles(id)} />
+        <>
+          <SourcePdfs sourceId={source.id} files={await listSourceFiles(id)} />
+          <SourceQuotes sourceId={source.id} quotes={await listQuotes(id)} />
+        </>
       }
     />
   );

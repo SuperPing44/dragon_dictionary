@@ -43,6 +43,13 @@
       "when": 1793015434459,
       "tag": "0005_source_files",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793016007680,
+      "tag": "0006_quotes",
+      "breakpoints": true
     }
   ]
 }

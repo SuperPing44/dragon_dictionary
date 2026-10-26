@@ -187,3 +187,16 @@ export const sourceFile = sqliteTable("source_file", {
 });
 
 export type SourceFile = typeof sourceFile.$inferSelect;
+
+/** A quote from a source, with an optional location ("p. 42", "12:30"). */
+export const quote = sqliteTable("quote", {
+  id: text("id").primaryKey(),
+  source: text("source")
+    .notNull()
+    .references(() => source.id, { onDelete: "cascade" }),
+  text: text("text").notNull(),
+  location: text("location"),
+  created: text("created").notNull(),
+});
+
+export type Quote = typeof quote.$inferSelect;
