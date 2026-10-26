@@ -31,7 +31,7 @@ beforeEach(() => {
 });
 
 describe("sources", () => {
-  it("creates, updates and deletes a source", () => {
+  it("creates, updates and deletes a source", async () => {
     const created = createSource(
       db,
       values({ title: "The Poetic Edda", date: "1996" }),
@@ -58,7 +58,7 @@ describe("sources", () => {
       created: created.created,
     });
 
-    deleteSource(db, created.id);
+    await deleteSource(db, created.id, "unused-files-root");
     expect(getSource(db, created.id)).toBeUndefined();
   });
 });

@@ -2,7 +2,12 @@
 
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createSource, deleteSource, updateSource } from "@/db";
+import {
+  createSource,
+  deleteSource,
+  removeSourceFile,
+  updateSource,
+} from "@/db";
 import {
   type SourceErrors,
   type SourceInput,
@@ -36,4 +41,9 @@ export async function deleteSourceAction(id: string) {
   await deleteSource(id);
   revalidatePath("/", "layout");
   redirect("/sources");
+}
+
+export async function removeFileAction(fileId: string) {
+  await removeSourceFile(fileId);
+  refresh();
 }
