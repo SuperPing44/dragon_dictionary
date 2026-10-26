@@ -1,4 +1,5 @@
 import { io } from "next/cache";
+import type { SourceValues } from "@/lib/sources";
 import * as categoryQueries from "./categories";
 import { getDb } from "./connection";
 import * as ideaQueries from "./ideas";
@@ -6,6 +7,7 @@ import * as metaQueries from "./meta";
 import * as projectQueries from "./projects";
 import type { Category, CategoryColour, SectionKind } from "./schema";
 import * as sectionQueries from "./sections";
+import * as sourceQueries from "./sources";
 
 // Every query goes through here. better-sqlite3 is synchronous, so each read
 // awaits io() first; otherwise cacheComponents would prerender it.
@@ -215,6 +217,36 @@ export async function setSpeakingRate(rate: number) {
   metaQueries.setSpeakingRate(getDb(), rate);
 }
 
+export async function listSources(query?: sourceQueries.SourceQuery) {
+  await io();
+  return sourceQueries.listSources(getDb(), query);
+}
+
+export async function getSource(id: string) {
+  await io();
+  return sourceQueries.getSource(getDb(), id);
+}
+
+export async function createSource(values: SourceValues) {
+  await io();
+  return sourceQueries.createSource(getDb(), values);
+}
+
+export async function updateSource(id: string, values: SourceValues) {
+  await io();
+  return sourceQueries.updateSource(getDb(), id, values);
+}
+
+export async function deleteSource(id: string) {
+  await io();
+  sourceQueries.deleteSource(getDb(), id);
+}
+
+export async function sourceLinkIndex() {
+  await io();
+  return sourceQueries.linkIndex(getDb());
+}
+
 export type SidebarCounts = {
   ideas: number;
   videoProjects: number;
@@ -225,11 +257,10 @@ export type SidebarCounts = {
 export async function sidebarCounts(): Promise<SidebarCounts> {
   await io();
   const db = getDb();
-  // Sources arrive with their own ticket.
   return {
     ideas: ideaQueries.countIdeas(db),
     videoProjects: projectQueries.countVideoProjects(db),
-    sources: 0,
+    sources: sourceQueries.countSources(db),
     categories: categoryQueries.countCategories(db),
   };
 }
@@ -245,7 +276,15 @@ export {
   SECTION_KINDS,
   type Section,
   type SectionKind,
+  SOURCE_TYPES,
+  type Source,
+  type SourceType,
   VIDEO_STAGES,
   type VideoProject,
   type VideoStage,
 } from "./schema";
+export {
+  SOURCE_SORTS,
+  type SourceSort,
+  type SourceWithProjects,
+} from "./sources";
