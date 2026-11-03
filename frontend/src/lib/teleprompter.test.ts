@@ -194,6 +194,7 @@ describe("keyAction", () => {
     [{ code: "ArrowRight", key: "ArrowRight" }, "next"],
     [{ code: "Home", key: "Home" }, "top"],
     [{ code: "Escape", key: "Escape" }, "leave"],
+    [{ code: "KeyF", key: "f" }, "fullscreen"],
   ] as const)("maps %o by code to %s", (input, action) => {
     expect(keyAction(key(input))).toBe(action);
   });
