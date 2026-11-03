@@ -3,53 +3,20 @@
 import {
   type Editor,
   InputRule,
-  mergeAttributes,
-  Node,
   NodeViewWrapper,
   type ReactNodeViewProps,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { StageDirectionNode } from "@/lib/script-schema";
 
 /**
- * A stage direction: an inline amber chip such as "Image: map of
- * Scandinavia", stored in the section's Tiptap JSON as a `stageDirection`
- * node with a `description`. Never counted as words.
+ * The editor's stage direction: the shared node (`@/lib/script-schema`)
+ * shown as an inline amber chip, plus typing `[Image: …]`, Alt+I and
+ * in-place editing.
  */
-export const StageDirection = Node.create({
-  name: "stageDirection",
-  group: "inline",
-  inline: true,
-  atom: true,
-  selectable: true,
-
-  addAttributes() {
-    return { description: { default: "" } };
-  },
-
-  parseHTML() {
-    return [
-      {
-        tag: "span[data-stage-direction]",
-        getAttrs: (el) => ({
-          description: (el as HTMLElement).dataset.description ?? "",
-        }),
-      },
-    ];
-  },
-
-  renderHTML({ node, HTMLAttributes }) {
-    return [
-      "span",
-      mergeAttributes(HTMLAttributes, {
-        "data-stage-direction": "",
-        "data-description": node.attrs.description,
-      }),
-      `[Image: ${node.attrs.description}]`,
-    ];
-  },
-
+export const StageDirection = StageDirectionNode.extend({
   addInputRules() {
     // Typing the notation, e.g. "[Image: map of Scandinavia]", converts on
     // "]". (Tiptap's nodeInputRule would only replace the captured text.)
