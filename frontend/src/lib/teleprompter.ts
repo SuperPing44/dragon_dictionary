@@ -12,6 +12,7 @@ const LINES_PER_MINUTE_PER_LEVEL = 3;
 export const MIN_TEXT_SIZE = 32;
 export const MAX_TEXT_SIZE = 96;
 export const DEFAULT_TEXT_SIZE = 56;
+export const TEXT_SIZE_STEP = 4;
 
 /** Line height of the teleprompter text, in em. */
 export const LINE_HEIGHT = 1.35;
@@ -84,4 +85,104 @@ export function advance(
 ): { y: number; ended: boolean } {
   const next = y + (Math.min(elapsedMs, MAX_FRAME_MS) / 1000) * pxPerSecond;
   return next >= endY ? { y: endY, ended: true } : { y: next, ended: false };
+}
+
+export function isValidSpeedLevel(level: number): boolean {
+  return (
+    Number.isInteger(level) &&
+    level >= MIN_SPEED_LEVEL &&
+    level <= MAX_SPEED_LEVEL
+  );
+}
+
+export function isValidTextSize(size: number): boolean {
+  return (
+    Number.isInteger(size) &&
+    size >= MIN_TEXT_SIZE &&
+    size <= MAX_TEXT_SIZE &&
+    (size - MIN_TEXT_SIZE) % TEXT_SIZE_STEP === 0
+  );
+}
+
+const clamp = (n: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, n));
+
+/** One speed level faster (+1) or slower (−1), within 1–20. */
+export function stepSpeedLevel(level: number, by: 1 | -1): number {
+  return clamp(level + by, MIN_SPEED_LEVEL, MAX_SPEED_LEVEL);
+}
+
+/** One step (4 px) bigger (+1) or smaller (−1), within 32–96 px. */
+export function stepTextSize(size: number, by: 1 | -1): number {
+  return clamp(size + by * TEXT_SIZE_STEP, MIN_TEXT_SIZE, MAX_TEXT_SIZE);
+}
+
+/** What a teleprompter key does. */
+export type KeyAction =
+  | "toggle"
+  | "faster"
+  | "slower"
+  | "bigger"
+  | "smaller"
+  | "previous"
+  | "next"
+  | "top"
+  | "leave"
+  | "hints";
+
+/** The parts of a keydown event the mapping reads. */
+export type KeyInput = Pick<
+  KeyboardEvent,
+  "code" | "key" | "repeat" | "isComposing" | "ctrlKey" | "metaKey" | "altKey"
+>;
+
+const BY_CODE: Record<string, KeyAction> = {
+  Space: "toggle",
+  ArrowUp: "faster",
+  ArrowDown: "slower",
+  ArrowLeft: "previous",
+  ArrowRight: "next",
+  Home: "top",
+  Escape: "leave",
+};
+
+// Matched on the character: layouts put these on different keys (German
+// has + on its own key and − on Slash).
+const BY_KEY: Record<string, KeyAction> = {
+  "+": "bigger",
+  "-": "smaller",
+  "−": "smaller",
+  "?": "hints",
+};
+
+/** Actions a held key repeats. */
+const REPEATS = new Set<KeyAction>(["faster", "slower", "bigger", "smaller"]);
+
+/**
+ * The action for a keydown: null when it isn't a teleprompter key (or comes
+ * with a modifier or during IME composition), "none" when it is one but a
+ * held-down repeat that shouldn't act again.
+ */
+export function keyAction(e: KeyInput): KeyAction | "none" | null {
+  if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return null;
+  const action = BY_CODE[e.code] ?? BY_KEY[e.key];
+  if (!action) return null;
+  return e.repeat && !REPEATS.has(action) ? "none" : action;
+}
+
+/**
+ * Where ← (−1) or → (+1) goes: the start of the previous or next entry,
+ * given the entries' scroll positions; undefined past either end. The
+ * previous entry is the one before the current position, so ← from inside
+ * an entry goes back to that entry's start first.
+ */
+export function jumpTarget(
+  tops: number[],
+  y: number,
+  direction: 1 | -1,
+): number | undefined {
+  const EPSILON = 1;
+  return direction > 0
+    ? tops.find((top) => top > y + EPSILON)
+    : tops.findLast((top) => top < y - EPSILON);
 }

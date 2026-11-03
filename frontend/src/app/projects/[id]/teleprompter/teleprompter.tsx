@@ -2,25 +2,37 @@
 
 import { useRouter } from "next/navigation";
 import {
+  type ReactNode,
   useEffect,
   useEffectEvent,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import {
   advance,
-  DEFAULT_SPEED_LEVEL,
-  DEFAULT_TEXT_SIZE,
+  jumpTarget,
+  type KeyAction,
+  keyAction,
   LINE_HEIGHT,
   type PromptEntry,
   pixelsPerSecond,
+  stepSpeedLevel,
+  stepTextSize,
 } from "@/lib/teleprompter";
 import { renderEntry } from "@/lib/teleprompter-render";
 import {
   rememberReadingEntry,
   takeOpenedFromScript,
 } from "@/lib/teleprompter-return";
+import { saveSpeedLevelAction, saveTextSizeAction } from "./actions";
+
+/** How long a change waits before it's saved, so a held key saves once. */
+const SAVE_DELAY_MS = 500;
+const TOAST_MS = 1200;
+
+type PendingSave = { timer: ReturnType<typeof setTimeout>; save: () => void };
 
 type TeleprompterProps = {
   projectId: string;
@@ -28,6 +40,9 @@ type TeleprompterProps = {
   entries: PromptEntry[];
   /** Where reading starts; undefined for an empty script. */
   startId: string | undefined;
+  /** The remembered speed level and text size (app_meta). */
+  initialSpeedLevel: number;
+  initialTextSize: number;
 };
 
 /** The keys, as shown in the key-hint panel (spec §5.1). */
@@ -52,15 +67,21 @@ export function Teleprompter({
   projectId,
   entries,
   startId,
+  initialSpeedLevel,
+  initialTextSize,
 }: TeleprompterProps) {
   const router = useRouter();
   const [running, setRunning] = useState(false);
-  // The key hints show until scrolling first starts.
-  const [started, setStarted] = useState(false);
+  // The key hints show until scrolling first starts, and again on "?".
+  const [hints, setHints] = useState(true);
   const [ended, setEnded] = useState(false);
-  const [textSize] = useState(DEFAULT_TEXT_SIZE);
-  const speedLevel = useRef(DEFAULT_SPEED_LEVEL);
+  const [textSize, setTextSize] = useState(initialTextSize);
+  const [toast, setToast] = useState<string | null>(null);
+  const speedLevel = useRef(initialSpeedLevel);
+  const scrolled = useRef(false);
   const y = useRef(0);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const saves = useRef(new Map<string, PendingSave>());
   const reading = useRef(startId);
   const column = useRef<HTMLDivElement>(null);
   const endMarker = useRef<HTMLDivElement>(null);
@@ -107,7 +128,7 @@ export function Teleprompter({
     place(entryTop(startId));
   });
   const placeAfterFonts = useEffectEvent(() => {
-    if (!started) place(entryTop(reading.current));
+    if (!scrolled.current) place(entryTop(reading.current));
   });
   useLayoutEffect(() => {
     placeAtStart();
@@ -149,21 +170,102 @@ export function Teleprompter({
     else router.replace(`/projects/${projectId}`);
   }
 
-  // One keydown listener on window for every teleprompter key.
-  const onKey = useEffectEvent((e: KeyboardEvent) => {
-    if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
-    switch (e.code) {
-      case "Space":
-        e.preventDefault();
-        if (e.repeat || ended) return;
-        setStarted(true);
+  function showToast(text: string) {
+    clearTimeout(toastTimer.current);
+    setToast(text);
+    toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);
+  }
+
+  /** Saves a setting once the key has been let go for a moment. */
+  function saveLater(name: string, save: () => void) {
+    clearTimeout(saves.current.get(name)?.timer);
+    const timer = setTimeout(() => {
+      saves.current.delete(name);
+      save();
+    }, SAVE_DELAY_MS);
+    saves.current.set(name, { timer, save });
+  }
+
+  // Leaving saves whatever is still waiting.
+  useEffect(() => {
+    const pending = saves.current;
+    return () => {
+      for (const { timer, save } of pending.values()) {
+        clearTimeout(timer);
+        save();
+      }
+      pending.clear();
+    };
+  }, []);
+
+  function changeSpeed(by: 1 | -1) {
+    const level = stepSpeedLevel(speedLevel.current, by);
+    speedLevel.current = level;
+    showToast(`Speed ${level}`);
+    saveLater("speed", () => void saveSpeedLevelAction(level));
+  }
+
+  /** Changes the size; everything is in em, so the position scales too. */
+  function changeSize(by: 1 | -1) {
+    const size = stepTextSize(textSize, by);
+    showToast(`Size ${size}`);
+    if (size === textSize) return;
+    const ratio = size / textSize;
+    flushSync(() => setTextSize(size));
+    place(y.current * ratio);
+    saveLater("size", () => void saveTextSizeAction(size));
+  }
+
+  /** ← / →: the previous or next entry, paused at its start. */
+  function jump(direction: 1 | -1) {
+    const tops = entryElements().map((el) => el.offsetTop);
+    const target = jumpTarget(tops, y.current, direction);
+    if (target === undefined) return;
+    setRunning(false);
+    setEnded(false);
+    place(target);
+  }
+
+  function act(action: KeyAction) {
+    switch (action) {
+      case "toggle":
+        if (ended) return;
+        if (!running) {
+          scrolled.current = true;
+          setHints(false);
+        }
         setRunning(!running);
         return;
-      case "Escape":
-        e.preventDefault();
-        leave();
+      case "faster":
+        return changeSpeed(1);
+      case "slower":
+        return changeSpeed(-1);
+      case "bigger":
+        return changeSize(1);
+      case "smaller":
+        return changeSize(-1);
+      case "previous":
+        return jump(-1);
+      case "next":
+        return jump(1);
+      case "top":
+        setEnded(false);
+        place(entryElements()[0]?.offsetTop ?? 0);
         return;
+      case "hints":
+        if (!running) setHints(true);
+        return;
+      case "leave":
+        return leave();
     }
+  }
+
+  // One keydown listener on window for every teleprompter key.
+  const onKey = useEffectEvent((e: KeyboardEvent) => {
+    const action = keyAction(e);
+    if (action === null) return;
+    e.preventDefault();
+    if (action !== "none") act(action);
   });
   useEffect(() => {
     const handle = (e: KeyboardEvent) => onKey(e);
@@ -228,7 +330,16 @@ export function Teleprompter({
         </p>
       )}
 
-      {!started && <KeyHints />}
+      {toast && (
+        <output
+          aria-live="polite"
+          className="absolute top-16 left-1/2 -translate-x-1/2 rounded-full border border-border-strong bg-surface-2/90 px-4 py-1.5 font-medium text-[14px] text-fg leading-normal"
+        >
+          {toast}
+        </output>
+      )}
+
+      {hints && !running && <KeyHints />}
     </div>
   );
 }
@@ -254,7 +365,7 @@ function KeyHints() {
   );
 }
 
-function Kbd({ children }: { children: React.ReactNode }) {
+function Kbd({ children }: { children: ReactNode }) {
   return (
     <kbd className="rounded-[5px] border border-border-strong bg-surface-2 px-1.5 py-0.5 font-label text-[12px] text-fg">
       {children}

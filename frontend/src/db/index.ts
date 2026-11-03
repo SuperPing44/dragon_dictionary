@@ -224,6 +224,21 @@ export async function setSpeakingRate(rate: number) {
   metaQueries.setSpeakingRate(getDb(), rate);
 }
 
+export async function getTeleprompterSettings() {
+  await io();
+  return metaQueries.getTeleprompterSettings(getDb());
+}
+
+export async function setTeleprompterSpeedLevel(level: number) {
+  await io();
+  metaQueries.setTeleprompterSpeedLevel(getDb(), level);
+}
+
+export async function setTeleprompterTextSize(size: number) {
+  await io();
+  metaQueries.setTeleprompterTextSize(getDb(), size);
+}
+
 export async function listSources(query?: sourceQueries.SourceQuery) {
   await io();
   return sourceQueries.listSources(getDb(), query);

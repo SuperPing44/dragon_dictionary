@@ -3,11 +3,18 @@ import { describe, expect, it } from "vitest";
 import {
   advance,
   canPrompt,
+  isValidSpeedLevel,
+  isValidTextSize,
+  jumpTarget,
+  type KeyInput,
+  keyAction,
   MAX_FRAME_MS,
   type PromptSection,
   pixelsPerSecond,
   prompterEntries,
   startEntryId,
+  stepSpeedLevel,
+  stepTextSize,
 } from "./teleprompter";
 import { renderEntry } from "./teleprompter-render";
 
@@ -146,5 +153,101 @@ describe("renderEntry", () => {
       renderEntry(prompterEntries(script)[0].doc),
     );
     expect(html).toBe("<p>Wolves.</p>");
+  });
+});
+
+describe("speed and size", () => {
+  it("accepts levels 1–20 and sizes 32–96 px in steps of 4", () => {
+    expect([1, 8, 20].every(isValidSpeedLevel)).toBe(true);
+    expect([0, 21, 1.5].some(isValidSpeedLevel)).toBe(false);
+    expect([32, 56, 96].every(isValidTextSize)).toBe(true);
+    expect([28, 100, 58].some(isValidTextSize)).toBe(false);
+  });
+
+  it("steps one level or 4 px at a time and stops at the limits", () => {
+    expect(stepSpeedLevel(8, 1)).toBe(9);
+    expect(stepSpeedLevel(20, 1)).toBe(20);
+    expect(stepSpeedLevel(1, -1)).toBe(1);
+    expect(stepTextSize(56, 1)).toBe(60);
+    expect(stepTextSize(96, 1)).toBe(96);
+    expect(stepTextSize(32, -1)).toBe(32);
+  });
+});
+
+const key = (input: Partial<KeyInput>): KeyInput => ({
+  code: "",
+  key: "",
+  repeat: false,
+  isComposing: false,
+  ctrlKey: false,
+  metaKey: false,
+  altKey: false,
+  ...input,
+});
+
+describe("keyAction", () => {
+  it.each([
+    [{ code: "Space", key: " " }, "toggle"],
+    [{ code: "ArrowUp", key: "ArrowUp" }, "faster"],
+    [{ code: "ArrowDown", key: "ArrowDown" }, "slower"],
+    [{ code: "ArrowLeft", key: "ArrowLeft" }, "previous"],
+    [{ code: "ArrowRight", key: "ArrowRight" }, "next"],
+    [{ code: "Home", key: "Home" }, "top"],
+    [{ code: "Escape", key: "Escape" }, "leave"],
+  ] as const)("maps %o by code to %s", (input, action) => {
+    expect(keyAction(key(input))).toBe(action);
+  });
+
+  it("matches + and − on the character, wherever the layout puts them", () => {
+    // German layout: + has its own key (code BracketRight), − is Slash.
+    expect(keyAction(key({ code: "BracketRight", key: "+" }))).toBe("bigger");
+    expect(keyAction(key({ code: "Slash", key: "-" }))).toBe("smaller");
+    // US layout: Shift+= gives +; the numpad keys work too.
+    expect(keyAction(key({ code: "Equal", key: "+" }))).toBe("bigger");
+    expect(keyAction(key({ code: "NumpadSubtract", key: "-" }))).toBe(
+      "smaller",
+    );
+    expect(keyAction(key({ code: "Equal", key: "=" }))).toBeNull();
+  });
+
+  it("shows the key hint on ?", () => {
+    expect(keyAction(key({ code: "Minus", key: "?" }))).toBe("hints");
+  });
+
+  it("repeats speed and size while held, but not play/pause or jumps", () => {
+    expect(keyAction(key({ code: "ArrowUp", repeat: true }))).toBe("faster");
+    expect(keyAction(key({ code: "Slash", key: "-", repeat: true }))).toBe(
+      "smaller",
+    );
+    expect(keyAction(key({ code: "Space", repeat: true }))).toBe("none");
+    expect(keyAction(key({ code: "ArrowRight", repeat: true }))).toBe("none");
+  });
+
+  it("ignores IME composition and modifier combinations", () => {
+    expect(keyAction(key({ code: "Space", isComposing: true }))).toBeNull();
+    expect(keyAction(key({ code: "ArrowUp", ctrlKey: true }))).toBeNull();
+    expect(keyAction(key({ code: "Home", altKey: true }))).toBeNull();
+    expect(keyAction(key({ code: "Space", metaKey: true }))).toBeNull();
+    expect(keyAction(key({ code: "KeyX", key: "x" }))).toBeNull();
+  });
+});
+
+describe("jumpTarget", () => {
+  // Entry tops in px; empty entries aren't rendered, so never in the list.
+  const tops = [0, 400, 1200];
+
+  it("goes to the next entry's start", () => {
+    expect(jumpTarget(tops, 0, 1)).toBe(400);
+    expect(jumpTarget(tops, 650, 1)).toBe(1200);
+  });
+
+  it("goes to the start of the entry before the current position", () => {
+    expect(jumpTarget(tops, 650, -1)).toBe(400);
+    expect(jumpTarget(tops, 400, -1)).toBe(0);
+  });
+
+  it("stays put past either end", () => {
+    expect(jumpTarget(tops, 1200, 1)).toBeUndefined();
+    expect(jumpTarget(tops, 0, -1)).toBeUndefined();
   });
 });
