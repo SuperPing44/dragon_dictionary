@@ -7,8 +7,8 @@ import {
   type JSONContent,
   useEditor,
 } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import { useEffect } from "react";
+import { ScriptStarterKit } from "@/lib/script-schema";
 import { StageDirection } from "./stage-direction";
 
 type EntryEditorProps = {
@@ -33,14 +33,7 @@ export function EntryEditor({
     // Needed with SSR: the editor only exists in the browser.
     immediatelyRender: false,
     extensions: [
-      StarterKit.configure({
-        heading: false,
-        codeBlock: false,
-        blockquote: false,
-        horizontalRule: false,
-        code: false,
-        link: false,
-      }),
+      ScriptStarterKit,
       Placeholder.configure({ placeholder }),
       StageDirection,
     ],

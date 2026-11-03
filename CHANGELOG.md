@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Teleprompter: opened from the Script tab at the selected entry, it shows the script read-only in the "Broadcast" look and scrolls with Space to pause and resume (#43).
+
 ## [0.1.0] - 2026-10-26
 
 MVP v1, as specified in [`docs/spec/mvp-v1.md`](docs/spec/mvp-v1.md).

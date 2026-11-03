@@ -23,6 +23,8 @@
   --color-gold: #e9c46a;
   --color-amber: #f2a93b;
   --color-danger: #ff6b8a;
+  /* bg/prompter: the teleprompter's near-black background. */
+  --color-prompter: #050308;
 
   --font-heading: var(--font-cinzel);
   --font-logo: var(--font-cinzel-decorative);
@@ -73,6 +75,25 @@ body {
 /* Script editor (Tiptap). */
 .script-text p + p {
   margin-top: 0.6em;
+}
+
+/*
+ * Teleprompter: text fades out above the reading band (fully faded from
+ * 24% of the screen height up) and below it (from 70%, gone by 98%).
+ */
+.prompter-fade {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 24%,
+    #000 31%,
+    #000 70%,
+    transparent 98%
+  );
+}
+
+.prompter-text p + p {
+  margin-top: 0.5em;
 }
 
 .script-text p.is-editor-empty:first-child::before {
