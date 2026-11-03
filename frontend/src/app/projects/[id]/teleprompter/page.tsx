@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { listSections } from "@/db";
+import { getTeleprompterSettings, listSections } from "@/db";
 import { prompterEntries, startEntryId } from "@/lib/teleprompter";
 import { Teleprompter } from "./teleprompter";
 
@@ -25,9 +25,12 @@ async function Prompter({
   const { id } = await params;
   const { entry } = await searchParams;
   const sections = await listSections(id);
+  const settings = await getTeleprompterSettings();
   return (
     <Teleprompter
       projectId={id}
+      initialSpeedLevel={settings.speedLevel}
+      initialTextSize={settings.textSize}
       entries={prompterEntries(sections)}
       startId={startEntryId(
         sections,
