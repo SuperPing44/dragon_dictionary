@@ -1,6 +1,12 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getVideoProject, listTitleOptions } from "@/db";
+import {
+  getVideoProject,
+  listProjectTags,
+  listTitleOptions,
+  tagUsage,
+} from "@/db";
+import { Tags } from "./tags";
 import { TitleOptions } from "./title-options";
 
 /**
@@ -33,6 +39,11 @@ async function Publishing({
           projectId={project.id}
           title={project.title}
           options={await listTitleOptions(project.id)}
+        />
+        <Tags
+          projectId={project.id}
+          tags={await listProjectTags(project.id)}
+          usage={await tagUsage(project.id)}
         />
       </div>
     </div>
