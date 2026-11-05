@@ -4,8 +4,13 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 import type { ThumbnailDraft } from "@/db/schema";
+import { formatBytes } from "@/lib/format";
 import {
+  indexAfterDelete,
+  pastedImageName,
+  stepDraft,
   THUMBNAIL_ACCEPT,
+  THUMBNAIL_TYPES,
   thumbnailRefusal,
   thumbnailWarning,
 } from "@/lib/thumbnails";
@@ -24,8 +29,10 @@ type ThumbnailDraftsProps = {
 
 /**
  * The Thumbnail drafts card (spec §5.2, Figma F1): a 16:9 grid in upload
- * order, a dashed drop tile last. Uploads stream through a Route Handler,
- * since Server Actions cap at 1 MB.
+ * order, a dashed drop tile last, and an enlarged view (F2). Images are
+ * added by Upload, by dropping them, or by pasting with Ctrl+V anywhere on
+ * the Publishing tab. Uploads stream through a Route Handler, since Server
+ * Actions cap at 1 MB.
  */
 export function ThumbnailDrafts({
   projectId,
@@ -38,6 +45,8 @@ export function ThumbnailDrafts({
   const [problems, setProblems] = useState<string[]>([]);
   const [dropping, setDropping] = useState(false);
   const [confirming, setConfirming] = useState<ThumbnailDraft | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const viewIndex = drafts.findIndex((d) => d.id === viewing);
 
   async function upload(files: File[]) {
     if (picker.current) picker.current.value = "";
@@ -72,6 +81,39 @@ export function ThumbnailDrafts({
     router.refresh();
   }
 
+  // Ctrl+V anywhere on the tab adds a pasted image. Text (anything with a
+  // text/plain part) still pastes into fields as normal.
+  const uploadRef = useRef(upload);
+  uploadRef.current = upload;
+  useEffect(() => {
+    const types: string[] = Object.values(THUMBNAIL_TYPES);
+    function onPaste(e: ClipboardEvent) {
+      const data = e.clipboardData;
+      if (!data || data.types.includes("text/plain")) return;
+      const images = [...data.files].filter((f) => types.includes(f.type));
+      if (images.length === 0) return;
+      e.preventDefault();
+      const now = new Date();
+      void uploadRef.current(
+        images.map(
+          (f) => new File([f], pastedImageName(f.type, now), { type: f.type }),
+        ),
+      );
+    }
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, []);
+
+  function deleteDraft(draft: ThumbnailDraft) {
+    setConfirming(null);
+    if (viewing === draft.id) {
+      const rest = drafts.filter((d) => d.id !== draft.id);
+      const next = indexAfterDelete(viewIndex, rest.length);
+      setViewing(rest[next]?.id ?? null);
+    }
+    startTransition(() => removeThumbnailDraftAction(draft.id));
+  }
+
   const hasFiles = (e: React.DragEvent) =>
     [...e.dataTransfer.types].includes("Files");
 
@@ -104,7 +146,7 @@ export function ThumbnailDrafts({
         </h2>
         <span className="flex-1" />
         <span className="font-label text-[11px] text-fg-faint">
-          PNG, JPEG, WebP or GIF · up to 20 MB · drop to add
+          PNG, JPEG, WebP or GIF · up to 20 MB · drop or Ctrl+V to add
         </span>
         <button
           type="button"
@@ -154,6 +196,7 @@ export function ThumbnailDrafts({
                 markThumbnailFinalAction(projectId, draft.id),
               )
             }
+            onOpen={() => setViewing(draft.id)}
             onDelete={() => setConfirming(draft)}
           />
         ))}
@@ -191,15 +234,28 @@ export function ThumbnailDrafts({
         </li>
       </ul>
 
+      {viewIndex >= 0 && (
+        <EnlargedView
+          drafts={drafts}
+          index={viewIndex}
+          finalId={finalId}
+          paused={confirming !== null}
+          onMove={(step) =>
+            setViewing(drafts[stepDraft(viewIndex, step, drafts.length)].id)
+          }
+          onMarkFinal={(id) =>
+            startTransition(() => markThumbnailFinalAction(projectId, id))
+          }
+          onDelete={setConfirming}
+          onClose={() => setViewing(null)}
+        />
+      )}
+
       {confirming && (
         <DeleteDialog
           draft={confirming}
           onCancel={() => setConfirming(null)}
-          onDelete={() => {
-            const id = confirming.id;
-            setConfirming(null);
-            startTransition(() => removeThumbnailDraftAction(id));
-          }}
+          onDelete={() => deleteDraft(confirming)}
         />
       )}
     </section>
@@ -209,11 +265,18 @@ export function ThumbnailDrafts({
 type DraftCardProps = {
   draft: ThumbnailDraft;
   isFinal: boolean;
+  onOpen: () => void;
   onMarkFinal: () => void;
   onDelete: () => void;
 };
 
-function DraftCard({ draft, isFinal, onMarkFinal, onDelete }: DraftCardProps) {
+function DraftCard({
+  draft,
+  isFinal,
+  onOpen,
+  onMarkFinal,
+  onDelete,
+}: DraftCardProps) {
   const warn = thumbnailWarning(draft.width, draft.height);
   return (
     <li className="group flex flex-col gap-1.5">
@@ -231,6 +294,12 @@ function DraftCard({ draft, isFinal, onMarkFinal, onDelete }: DraftCardProps) {
           unoptimized
           sizes="300px"
           className="object-contain"
+        />
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`Enlarge ${draft.originalName}`}
+          className="absolute inset-0 cursor-zoom-in focus-visible:outline-2 focus-visible:outline-accent"
         />
         {isFinal ? (
           <span className="absolute top-2 left-2 flex items-center gap-1 rounded-md border border-gold/60 bg-canvas/80 px-2 py-0.5 font-bold font-label text-[11px] text-gold uppercase tracking-[1px]">
@@ -379,6 +448,158 @@ function DeleteDialog({
           >
             Delete
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type EnlargedViewProps = {
+  drafts: ThumbnailDraft[];
+  index: number;
+  finalId: string | null;
+  /** While the delete confirmation is open, the keys are its own. */
+  paused: boolean;
+  onMove: (step: -1 | 1) => void;
+  onMarkFinal: (id: string) => void;
+  onDelete: (draft: ThumbnailDraft) => void;
+  onClose: () => void;
+};
+
+/**
+ * A draft over the dimmed page (Figma F2). ← / → move between drafts,
+ * stopping at the ends, and Esc closes.
+ */
+function EnlargedView({
+  drafts,
+  index,
+  finalId,
+  paused,
+  onMove,
+  onMarkFinal,
+  onDelete,
+  onClose,
+}: EnlargedViewProps) {
+  const draft = drafts[index];
+  const isFinal = draft.id === finalId;
+  const warn = thumbnailWarning(draft.width, draft.height);
+  const keys = useRef({ onMove, onClose, paused });
+  keys.current = { onMove, onClose, paused };
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const { onMove, onClose, paused } = keys.current;
+      const target = e.target as HTMLElement | null;
+      if (paused || target?.closest("input, textarea")) return;
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault();
+        onMove(e.key === "ArrowLeft" ? -1 : 1);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const arrow =
+    "absolute top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-border-strong bg-surface-1/85 text-[20px] text-fg hover:border-accent disabled:opacity-30";
+
+  return (
+    <div className="fixed inset-0 z-40 flex flex-col bg-canvas/90 backdrop-blur-[3px]">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Thumbnail draft ${index + 1} of ${drafts.length}`}
+        className="flex h-full flex-col gap-4 px-8 py-6"
+      >
+        <div className="flex items-center gap-4 rounded-[14px] border border-border-soft bg-surface-1 px-4 py-2.5">
+          <span className="font-label font-semibold text-[12px] text-fg-muted tabular-nums">
+            {index + 1} of {drafts.length}
+          </span>
+          <span className="min-w-0 truncate font-heading font-semibold text-[15px] text-fg">
+            {draft.originalName}
+          </span>
+          <span
+            className={`font-label text-[12px] tabular-nums ${warn ? "text-amber" : "text-fg-faint"}`}
+          >
+            {draft.width}×{draft.height}
+            {warn && " · not 16:9"}
+          </span>
+          <span className="font-label text-[12px] text-fg-faint">
+            {formatBytes(draft.size)}
+          </span>
+          <span className="flex-1" />
+          {isFinal ? (
+            <span className="flex items-center gap-1 rounded-md border border-gold/60 bg-gold/10 px-2 py-0.5 font-bold font-label text-[11px] text-gold uppercase tracking-[1px]">
+              <span aria-hidden>✦</span> Final
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onMarkFinal(draft.id)}
+              className="font-label font-medium text-[13px] text-accent-glow hover:underline"
+            >
+              Mark as final
+            </button>
+          )}
+          <a
+            href={`/api/thumbnails/${draft.id}?download`}
+            download={draft.originalName}
+            className="rounded-lg border border-border-strong px-3 py-1.5 font-label font-medium text-[13px] text-fg hover:border-accent"
+          >
+            Download
+          </a>
+          <button
+            type="button"
+            onClick={() => onDelete(draft)}
+            className="rounded-lg px-3 py-1.5 font-label font-medium text-[13px] text-danger hover:bg-danger/10"
+          >
+            Delete
+          </button>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="flex size-8 items-center justify-center rounded-full text-fg-muted hover:bg-surface-3 hover:text-fg"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="relative min-h-0 flex-1">
+          <Image
+            key={draft.id}
+            src={`/api/thumbnails/${draft.id}`}
+            alt={draft.note ?? draft.originalName}
+            fill
+            unoptimized
+            sizes="100vw"
+            className="object-contain"
+          />
+          <button
+            type="button"
+            aria-label="Previous draft"
+            disabled={index === 0}
+            onClick={() => onMove(-1)}
+            className={`${arrow} left-0`}
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            aria-label="Next draft"
+            disabled={index === drafts.length - 1}
+            onClick={() => onMove(1)}
+            className={`${arrow} right-0`}
+          >
+            →
+          </button>
+        </div>
+
+        <div className="mx-auto flex w-full max-w-[640px] flex-col">
+          <DraftNote key={draft.id} id={draft.id} saved={draft.note ?? ""} />
         </div>
       </div>
     </div>

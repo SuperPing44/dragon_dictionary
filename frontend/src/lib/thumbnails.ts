@@ -41,3 +41,35 @@ export function thumbnailRefusal(file: {
   }
   return undefined;
 }
+
+const PASTED_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
+/** The name of a pasted image, in local time: `pasted-2026-10-27-1432.png`. */
+export function pastedImageName(type: string, now = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const time = `${pad(now.getHours())}${pad(now.getMinutes())}`;
+  return `pasted-${date}-${time}.${PASTED_EXT[type] ?? "png"}`;
+}
+
+/**
+ * ← / → in the enlarged view: one draft back or forward, stopping at the
+ * first and last draft (no wrap-around).
+ */
+export function stepDraft(index: number, step: -1 | 1, count: number): number {
+  return Math.min(Math.max(index + step, 0), count - 1);
+}
+
+/**
+ * Which draft the enlarged view shows after deleting the one at `index`:
+ * the next one (now at the same index), the previous one if it was last,
+ * or none (-1) when no draft is left.
+ */
+export function indexAfterDelete(index: number, countAfter: number): number {
+  return countAfter === 0 ? -1 : Math.min(index, countAfter - 1);
+}
