@@ -16,6 +16,7 @@ import type { Category, CategoryColour, SectionKind } from "./schema";
 import * as sectionQueries from "./sections";
 import * as sourceQueries from "./sources";
 import * as tagQueries from "./tags";
+import * as thumbQueries from "./thumbnails";
 import * as titleQueries from "./title-options";
 
 // Every query goes through here. better-sqlite3 is synchronous, so each read
@@ -177,9 +178,66 @@ export async function removeProjectCategory(
   projectQueries.removeProjectCategory(getDb(), projectId, categoryId);
 }
 
+/** Deletes a project; its thumbnail files go once the records are gone. */
 export async function deleteVideoProject(id: string) {
   await io();
   projectQueries.deleteVideoProject(getDb(), id);
+  await thumbQueries.removeProjectThumbnails(resolveFilesRoot(), id);
+}
+
+export async function listThumbnailDrafts(projectId: string) {
+  await io();
+  return thumbQueries.listThumbnailDrafts(getDb(), projectId);
+}
+
+export async function getThumbnailDraft(id: string) {
+  await io();
+  return thumbQueries.getThumbnailDraft(getDb(), id);
+}
+
+/**
+ * Stores an uploaded image as a thumbnail draft. Throws NotAnImageError or
+ * TooLargeError; returns undefined for an unknown project.
+ */
+export async function uploadThumbnailDraft(
+  projectId: string,
+  originalName: string,
+  body: AsyncIterable<Uint8Array>,
+) {
+  await io();
+  const db = getDb();
+  if (!projectQueries.getVideoProject(db, projectId)) return undefined;
+  const bytes = await thumbQueries.readUpload(body);
+  return thumbQueries.addThumbnailDraft(
+    db,
+    resolveFilesRoot(),
+    { id: uuidv7(), videoProject: projectId, originalName },
+    bytes,
+  );
+}
+
+/** Where a recorded thumbnail draft is on disk. */
+export function thumbnailFilePath(draft: {
+  id: string;
+  videoProject: string;
+  ext: string;
+}) {
+  return thumbQueries.thumbnailPath(resolveFilesRoot(), draft);
+}
+
+export async function setThumbnailNote(id: string, note: string) {
+  await io();
+  thumbQueries.setThumbnailNote(getDb(), id, note);
+}
+
+export async function markThumbnailFinal(projectId: string, draftId: string) {
+  await io();
+  thumbQueries.markThumbnailFinal(getDb(), projectId, draftId);
+}
+
+export async function removeThumbnailDraft(id: string) {
+  await io();
+  await thumbQueries.removeThumbnailDraft(getDb(), resolveFilesRoot(), id);
 }
 
 export async function listTitleOptions(projectId: string) {
@@ -475,6 +533,7 @@ export {
   type Source,
   type SourceFile,
   type SourceType,
+  type ThumbnailDraft,
   type TitleOption,
   VIDEO_STAGES,
   type VideoProject,
@@ -485,4 +544,5 @@ export {
   type SourceSort,
   type SourceWithProjects,
 } from "./sources";
+export { NotAnImageError, TooLargeError } from "./thumbnails";
 export type { TitleOptionRefusal, TitleOptionResult } from "./title-options";

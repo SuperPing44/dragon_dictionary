@@ -5,11 +5,13 @@ import {
   getVideoProject,
   listProjectSources,
   listProjectTags,
+  listThumbnailDrafts,
   listTitleOptions,
   tagUsage,
 } from "@/db";
 import { Description } from "./description";
 import { Tags } from "./tags";
+import { ThumbnailDrafts } from "./thumbnail-drafts";
 import { TitleOptions } from "./title-options";
 
 /**
@@ -49,6 +51,11 @@ async function Publishing({
           usage={await tagUsage(project.id)}
         />
       </div>
+      <ThumbnailDrafts
+        projectId={project.id}
+        drafts={await listThumbnailDrafts(project.id)}
+        finalId={project.finalThumbnail}
+      />
       <Description
         key={project.id}
         projectId={project.id}
