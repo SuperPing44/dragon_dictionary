@@ -22,6 +22,7 @@ import {
 } from "./backup";
 import { type Db, initDb, openDb } from "./connection";
 import { createIdea } from "./ideas";
+import { undoNewestMigration } from "./test-migrations";
 
 let work: string;
 let dataDir: string;
@@ -183,10 +184,8 @@ describe("initDb", () => {
 
   it("backs up before applying a pending migration", async () => {
     // Undo the newest migration, so it is pending again.
+    undoNewestMigration(db);
     db.$client.exec(`
-      drop table project_source;
-      delete from __drizzle_migrations
-        where created_at = (select max(created_at) from __drizzle_migrations);
       insert into app_meta (key, value) values ('last_backup_at', '${new Date().toISOString()}');
     `);
     db.$client.close();
@@ -203,7 +202,7 @@ describe("initDb", () => {
     const hasTable = (d: Database.Database) =>
       Boolean(
         d
-          .prepare("select 1 from sqlite_master where name = 'project_source'")
+          .prepare("select 1 from sqlite_master where name = 'title_option'")
           .get(),
       );
     expect(hasTable(snapshot)).toBe(false);

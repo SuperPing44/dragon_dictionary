@@ -167,9 +167,13 @@ export function listSections(db: Db, projectId: string): Section[] {
     .flatMap((top) => [top, ...all.filter((s) => s.parent === top.id)]);
 }
 
-export type VideoProjectChanges = { title?: string; stage?: VideoStage };
+export type VideoProjectChanges = {
+  title?: string;
+  stage?: VideoStage;
+  editingNote?: string;
+};
 
-/** Changes the title (never blank) or stage, and bumps `updated`. */
+/** Changes the title (never blank), stage or editing note, and bumps `updated`. */
 export function updateVideoProject(
   db: Db,
   id: string,
@@ -188,6 +192,8 @@ export function updateVideoProject(
     }
     values.stage = changes.stage;
   }
+  if (changes.editingNote !== undefined)
+    values.editingNote = changes.editingNote;
   return db
     .update(videoProject)
     .set({ ...values, updated: now.toISOString() })
@@ -237,8 +243,9 @@ export function removeProjectCategory(
 }
 
 /**
- * Deletes a project with its sections and category links (one statement,
- * cascading). Sources stay in the library.
+ * Deletes a project with its sections, category links, title options, tags,
+ * B-roll items and thumbnail-draft records (one statement, cascading).
+ * Sources stay in the library.
  */
 export function deleteVideoProject(db: Db, id: string): void {
   db.delete(videoProject).where(eq(videoProject.id, id)).run();

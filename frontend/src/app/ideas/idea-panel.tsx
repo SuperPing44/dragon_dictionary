@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { CategoryPicker } from "@/components/category-picker";
+import { useAutosave } from "@/components/use-autosave";
 import type { Category, CategoryColour, Idea } from "@/db/schema";
 import {
   addCategory,
@@ -13,7 +14,6 @@ import {
   saveIdea,
 } from "./actions";
 
-const SAVE_DELAY_MS = 1000;
 const RATINGS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 type IdeaPanelProps = {
@@ -183,30 +183,7 @@ function AutosaveField({
   onSave,
 }: AutosaveFieldProps) {
   const id = useId();
-  const [value, setValue] = useState(saved);
-  const lastSaved = useRef(saved);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  useEffect(() => () => clearTimeout(timer.current), []);
-
-  function save(next: string) {
-    clearTimeout(timer.current);
-    if (next === lastSaved.current) return;
-    if (required && !next.trim()) return;
-    lastSaved.current = next;
-    void onSave(next);
-  }
-
-  function change(next: string) {
-    setValue(next);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => save(next), SAVE_DELAY_MS);
-  }
-
-  function blur() {
-    save(value);
-    if (required && !value.trim()) setValue(lastSaved.current);
-  }
+  const { value, change, blur } = useAutosave(saved, onSave, { required });
 
   const box =
     "w-full rounded-[10px] border border-border-strong bg-surface-2 px-3.5 py-2.5 text-[17px] text-fg outline-none transition-shadow focus:border-accent focus:shadow-[0_0_12px_rgb(158_107_255/0.35)]";
