@@ -16,6 +16,7 @@ import {
   type VideoStage,
   videoProject,
 } from "./schema";
+import { seedTitleOption, syncTitleOptionsOnRename } from "./title-options";
 
 /** An empty Tiptap document, the content of a new section. */
 export const EMPTY_DOC = JSON.stringify({
@@ -51,7 +52,8 @@ function wordsByProject(db: Db, projectIds: string[]): Map<string, number> {
 /**
  * Turns an idea into a video project in one transaction: the project starts
  * in Research with the idea's title, keeps its note and rating as the
- * original idea, gets its categories and the six empty template sections,
+ * original idea, gets its categories, the six empty template sections and
+ * one title option (its title),
  * and the idea is deleted. Returns undefined if the idea doesn't exist.
  */
 export function makeVideoProject(
@@ -91,6 +93,7 @@ export function makeVideoProject(
         })),
       )
       .run();
+    seedTitleOption(tx, project.id, project.title, now);
     tx.delete(idea).where(eq(idea.id, ideaId)).run();
     return project;
   });
@@ -173,7 +176,10 @@ export type VideoProjectChanges = {
   editingNote?: string;
 };
 
-/** Changes the title (never blank), stage or editing note, and bumps `updated`. */
+/**
+ * Changes the title (never blank), stage or editing note, and bumps
+ * `updated`. A new title keeps the title options in step (spec §5.2).
+ */
 export function updateVideoProject(
   db: Db,
   id: string,
@@ -194,12 +200,22 @@ export function updateVideoProject(
   }
   if (changes.editingNote !== undefined)
     values.editingNote = changes.editingNote;
-  return db
-    .update(videoProject)
-    .set({ ...values, updated: now.toISOString() })
-    .where(eq(videoProject.id, id))
-    .returning()
-    .get();
+  return db.transaction((tx) => {
+    if (values.title !== undefined) {
+      const old = tx
+        .select({ title: videoProject.title })
+        .from(videoProject)
+        .where(eq(videoProject.id, id))
+        .get();
+      if (old) syncTitleOptionsOnRename(tx, id, old.title, values.title);
+    }
+    return tx
+      .update(videoProject)
+      .set({ ...values, updated: now.toISOString() })
+      .where(eq(videoProject.id, id))
+      .returning()
+      .get();
+  });
 }
 
 export function addProjectCategory(

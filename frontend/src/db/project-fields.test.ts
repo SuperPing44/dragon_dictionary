@@ -149,7 +149,8 @@ describe("deleting a video project", () => {
 
     const owners = (rows: { videoProject: string }[]) =>
       rows.map((r) => r.videoProject);
-    expect(owners(db.select().from(titleOption).all())).toEqual([other]);
+    // The seed option from makeVideoProject plus the one added here.
+    expect(owners(db.select().from(titleOption).all())).toEqual([other, other]);
     expect(owners(db.select().from(projectTag).all())).toEqual([other]);
     expect(owners(db.select().from(brollItem).all())).toEqual([other]);
     expect(owners(db.select().from(thumbnailDraft).all())).toEqual([other]);
