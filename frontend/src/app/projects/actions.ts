@@ -11,10 +11,13 @@ import {
   deleteVideoProject,
   editTitleOption,
   linkSource,
+  markThumbnailFinal,
   markTitleOptionFinal,
   removeProjectCategory,
   removeProjectTag,
+  removeThumbnailDraft,
   reorderTitleOptions,
+  setThumbnailNote,
   type TitleOptionRefusal,
   unlinkSource,
   updateVideoProject,
@@ -102,5 +105,23 @@ export async function addTagsAction(projectId: string, texts: string[]) {
 
 export async function removeTagAction(projectId: string, text: string) {
   await removeProjectTag(projectId, text);
+  refresh();
+}
+
+export async function markThumbnailFinalAction(
+  projectId: string,
+  draftId: string,
+) {
+  await markThumbnailFinal(projectId, draftId);
+  refresh();
+}
+
+export async function setThumbnailNoteAction(id: string, note: string) {
+  await setThumbnailNote(id, note);
+  refresh();
+}
+
+export async function removeThumbnailDraftAction(id: string) {
+  await removeThumbnailDraft(id);
   refresh();
 }
