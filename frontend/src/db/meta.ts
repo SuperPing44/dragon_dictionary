@@ -79,3 +79,15 @@ export function setTeleprompterTextSize(db: Db, size: number): void {
   }
   setMeta(db, SIZE_KEY, String(size));
 }
+
+const FOOTER_KEY = "description_footer";
+
+/** The description footer added to every project's copied description. */
+export function getDescriptionFooter(db: Db): string {
+  return getMeta(db, FOOTER_KEY) ?? "";
+}
+
+/** Sets the footer; plain text, empty allowed. */
+export function setDescriptionFooter(db: Db, footer: string): void {
+  setMeta(db, FOOTER_KEY, footer);
+}

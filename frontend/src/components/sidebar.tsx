@@ -31,6 +31,12 @@ const ENTRIES = [
   },
 ] as const;
 
+const SETTINGS = {
+  href: "/settings",
+  label: "Settings",
+  icon: "/design/icon-gear.svg",
+};
+
 export function Sidebar() {
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col gap-1.5 border-border-soft border-r bg-surface-1 px-[18px] pt-7 pb-6">
@@ -60,6 +66,10 @@ export function Sidebar() {
         </Suspense>
       </nav>
       <span className="flex-1" />
+      <Suspense fallback={<NavLinkView {...SETTINGS} />}>
+        <NavLink {...SETTINGS} />
+      </Suspense>
+      <div className="h-1" />
       <BackupCard />
     </aside>
   );

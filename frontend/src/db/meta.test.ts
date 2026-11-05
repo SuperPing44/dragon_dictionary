@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { type Db, openDb } from "./connection";
 import {
+  getDescriptionFooter,
   getSpeakingRate,
   getTeleprompterSettings,
+  setDescriptionFooter,
   setSpeakingRate,
   setTeleprompterSpeedLevel,
   setTeleprompterTextSize,
@@ -60,5 +62,23 @@ describe("teleprompter settings", () => {
   it.each([28, 100, 58, Number.NaN])("rejects text size %s", (size) => {
     expect(() => setTeleprompterTextSize(db, size)).toThrow();
     expect(getTeleprompterSettings(db).textSize).toBe(56);
+  });
+});
+
+describe("description footer", () => {
+  it("is empty by default", () => {
+    expect(getDescriptionFooter(db)).toBe("");
+  });
+
+  it("keeps multi-line text as typed, and can be emptied again", () => {
+    const footer = [
+      "Forest Dragon — myths and legends.",
+      "Subscribe: https://www.youtube.com/@ForestDragon",
+      "",
+    ].join("\n");
+    setDescriptionFooter(db, footer);
+    expect(getDescriptionFooter(db)).toBe(footer);
+    setDescriptionFooter(db, "");
+    expect(getDescriptionFooter(db)).toBe("");
   });
 });
