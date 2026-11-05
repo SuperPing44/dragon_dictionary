@@ -140,3 +140,10 @@ export function sourceList(sources: { title: string; link: string | null }[]): {
     leftOut: sources.length - lines.length,
   };
 }
+
+/** The note under a source list about linked sources with no link. */
+export function leftOutNote(leftOut: number): string {
+  return leftOut === 1
+    ? "1 linked source has no link and is left out."
+    : `${leftOut} linked sources have no link and are left out.`;
+}

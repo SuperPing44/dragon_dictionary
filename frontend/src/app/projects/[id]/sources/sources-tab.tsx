@@ -5,7 +5,7 @@ import Link from "next/link";
 import { startTransition, useState } from "react";
 import type { Source } from "@/db/schema";
 import type { SourceWithProjects } from "@/db/sources";
-import { SOURCE_TYPE_SHORT, sourceList } from "@/lib/sources";
+import { leftOutNote, SOURCE_TYPE_SHORT, sourceList } from "@/lib/sources";
 import { linkSourceAction, unlinkSourceAction } from "../../actions";
 
 const MAX_MATCHES = 6;
@@ -269,9 +269,7 @@ function SourceListCard({ linked }: { linked: Source[] }) {
               width={14}
               height={14}
             />
-            {leftOut === 1
-              ? "1 linked source has no link and is left out."
-              : `${leftOut} linked sources have no link and are left out.`}
+            {leftOutNote(leftOut)}
           </p>
         )}
       </section>

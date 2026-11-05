@@ -174,10 +174,11 @@ export type VideoProjectChanges = {
   title?: string;
   stage?: VideoStage;
   editingNote?: string;
+  description?: string;
 };
 
 /**
- * Changes the title (never blank), stage or editing note, and bumps
+ * Changes the title (never blank), stage, editing note or description, and bumps
  * `updated`. A new title keeps the title options in step (spec §5.2).
  */
 export function updateVideoProject(
@@ -200,6 +201,8 @@ export function updateVideoProject(
   }
   if (changes.editingNote !== undefined)
     values.editingNote = changes.editingNote;
+  if (changes.description !== undefined)
+    values.description = changes.description;
   return db.transaction((tx) => {
     if (values.title !== undefined) {
       const old = tx
