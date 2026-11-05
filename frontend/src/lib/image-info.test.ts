@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { readImageInfo } from "./image-info";
-import { thumbnailRefusal, thumbnailWarning } from "./thumbnails";
+import {
+  indexAfterDelete,
+  pastedImageName,
+  stepDraft,
+  thumbnailRefusal,
+  thumbnailWarning,
+} from "./thumbnails";
 
 function png(width: number, height: number): Buffer {
   const b = Buffer.alloc(33);
@@ -128,5 +134,28 @@ describe("thumbnailRefusal", () => {
         size: 20 * 1024 * 1024 + 1,
       }),
     ).toBe("“big.png” is over 20 MB.");
+  });
+});
+
+describe("enlarged view and paste", () => {
+  it("names a pasted image by its local date and time", () => {
+    const at = new Date(2026, 9, 27, 14, 32);
+    expect(pastedImageName("image/png", at)).toBe("pasted-2026-10-27-1432.png");
+    expect(pastedImageName("image/jpeg", new Date(2026, 0, 5, 9, 7))).toBe(
+      "pasted-2026-01-05-0907.jpg",
+    );
+  });
+
+  it("steps with ← / → and stops at the first and last draft", () => {
+    expect(stepDraft(1, 1, 3)).toBe(2);
+    expect(stepDraft(2, 1, 3)).toBe(2);
+    expect(stepDraft(1, -1, 3)).toBe(0);
+    expect(stepDraft(0, -1, 3)).toBe(0);
+  });
+
+  it("shows the next draft after a delete, the previous if it was last, or none", () => {
+    expect(indexAfterDelete(1, 3)).toBe(1);
+    expect(indexAfterDelete(3, 3)).toBe(2);
+    expect(indexAfterDelete(0, 0)).toBe(-1);
   });
 });

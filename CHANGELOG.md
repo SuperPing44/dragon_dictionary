@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings screen, opened from the bottom of the sidebar, with the description footer: plain text added after the source list in every project's copied description, saved as you type (#49).
 - Description on the Publishing tab: your own text, saved as you type, with a live preview of the source list and footer that Copy description adds. Copy gives your text, the source list and the footer separated by blank lines, with a counter against YouTube's 5,000 characters (#50).
 - Thumbnail drafts on the Publishing tab: upload PNG, JPEG, WebP or GIF images up to 20 MB by Upload or drag and drop, shown in a 16:9 grid with their pixel size (amber when not 16:9 or under 1280×720). Mark one as final, add a one-line note, and delete with a confirmation. Files are stored under files/thumbnails/ and removed with their draft or project (#51).
+- Thumbnail drafts, enlarged: clicking a card opens it over the dimmed page, with ←/→ between drafts, Esc to close, its size and file details, Mark as final, Download under the original name, Delete and an editable note. Ctrl+V anywhere on the Publishing tab adds a pasted image as a draft (#52).
 
 ## [0.1.0] - 2026-10-26
 
