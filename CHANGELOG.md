@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Publishing and Editing tabs on the video project page, with editing notes on the Editing tab, saved as you type. The database gains the 0.3.0 project fields (title options, tags, thumbnail drafts, B-roll items), and every existing project gets its title as its first title option (#46).
 - Title options on the Publishing tab: add, edit, drag to reorder and delete title ideas, each with a length counter against YouTube's 100 characters. Mark as final sets the project title, the final option shows a gold Final badge, and renaming the project keeps the options in step (#47).
 - Tags on the Publishing tab: chips added with Enter or a comma, kept as typed and unique ignoring case, removed with ✕ or Backspace. Typing suggests tags from other projects with how many use them, and Copy gives them comma-separated with a counter against YouTube's 500 characters (#48).
+- Settings screen, opened from the bottom of the sidebar, with the description footer: plain text added after the source list in every project's copied description, saved as you type (#49).
 
 ## [0.1.0] - 2026-10-26
 

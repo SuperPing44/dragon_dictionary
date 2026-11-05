@@ -280,6 +280,16 @@ export async function setSpeakingRate(rate: number) {
   metaQueries.setSpeakingRate(getDb(), rate);
 }
 
+export async function getDescriptionFooter() {
+  await io();
+  return metaQueries.getDescriptionFooter(getDb());
+}
+
+export async function setDescriptionFooter(footer: string) {
+  await io();
+  metaQueries.setDescriptionFooter(getDb(), footer);
+}
+
 export async function getTeleprompterSettings() {
   await io();
   return metaQueries.getTeleprompterSettings(getDb());
