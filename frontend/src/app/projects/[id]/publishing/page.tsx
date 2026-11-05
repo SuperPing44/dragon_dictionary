@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import {
+  getDescriptionFooter,
   getVideoProject,
+  listProjectSources,
   listProjectTags,
   listTitleOptions,
   tagUsage,
 } from "@/db";
+import { Description } from "./description";
 import { Tags } from "./tags";
 import { TitleOptions } from "./title-options";
 
@@ -46,6 +49,13 @@ async function Publishing({
           usage={await tagUsage(project.id)}
         />
       </div>
+      <Description
+        key={project.id}
+        projectId={project.id}
+        saved={project.description}
+        sources={await listProjectSources(project.id)}
+        footer={await getDescriptionFooter()}
+      />
     </div>
   );
 }

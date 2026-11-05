@@ -93,6 +93,13 @@ describe("editing note", () => {
     expect(getVideoProject(db, id)?.editingNote).toBe("Cut the second take.");
   });
 
+  it("saves the description the same way", () => {
+    const id = newProject("Fenrir");
+    const description = "Three winters.\n\n00:00 Intro";
+    updateVideoProject(db, id, { description });
+    expect(getVideoProject(db, id)?.description).toBe(description);
+  });
+
   it("can be cleared", () => {
     const id = newProject("Fenrir");
     updateVideoProject(db, id, { editingNote: "Cut it." });
