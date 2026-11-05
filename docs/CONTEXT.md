@@ -38,7 +38,7 @@ Idea → Research → Script → Recording → Editing → Thumbnail → Upload 
 ```
 
 - A video is in exactly **one** stage at any time.
-- The stages are shown as a **Kanban board**, one column per stage.
+- The stages from Research to Upload are shown as a **Kanban board**, one column per stage. Published videos leave the board and move to the **archive** (see 5.6).
 - Ideas only become "real" videos once they are taken over from the idea list (see 5.1).
 
 ## 5. Feature Areas
@@ -76,37 +76,41 @@ Each video project bundles:
 - Categories (taken over from the idea, filterable)
 - Script
 - Sources
-- **Title ideas** (several, one of them can be marked as final)
-- **Thumbnail drafts** (upload images or sketches)
+- **Title options** (several; the one matching the project's title is the final one)
+- **Thumbnail drafts** (uploaded images or sketches; one of them can be marked as the final thumbnail)
 - **Tags**
-- **Description** (including the automatically inserted source list)
+- **Description** (when copied, the automatic source list and the shared **description footer** are added)
 - **Editing notes**
-- **B-roll list**: images and clips needed; ideally the stage directions from the script are collected here automatically
+- **B-roll list**: images and clips needed. The stage directions from the script are collected here automatically, extra items can be added by hand, and each item is ticked off once found.
+
+The fields that go to YouTube (title options, thumbnail drafts, tags, description) sit together on the project's Publishing tab; editing notes and the B-roll list on its Editing tab.
 
 ### 5.5 Teleprompter
-- Shows the script large and easy to read on the laptop.
-- **Adjustable scroll speed**
+- Shows the script large and easy to read on the laptop, in fullscreen.
+- **Adjustable scroll speed**, remembered for the next take
 - **Pause and resume**
-- Controlled **by keyboard only** (e.g. space bar to pause, arrow keys for speed).
-- Stage directions are hidden in the teleprompter or shown only subtly.
-- Option to start directly at a specific section
+- Controlled **by keyboard only** (e.g. space bar to pause, arrow keys for speed and for jumping between sections).
+- Stage directions are shown only subtly.
+- Starts at the section selected in the script.
 
 ### 5.6 Archive
-- Published videos move to the **archive** and stay searchable there, e.g. by title or category.
-- Each archived video stores the **link to the YouTube video**, entered by hand. This is the only connection to YouTube; there are no statistics or data pulled from it.
+- Published videos move to the **archive** and stay searchable there, by title, category or year.
+- Each archived video stores the **link to the YouTube video** and its publish date, entered by hand. This is the only connection to YouTube; there are no statistics or data pulled from it.
 
-## 6. Scope of the First Version (MVP)
+## 6. Scope by Version
 
 | Priority | Feature |
 |---|---|
 | **MVP** | Script editor with sections and stage directions |
 | **MVP** | Source management including automatic source list |
 | **MVP** | Idea list with rating |
-| Next | Kanban board with the video lifecycle |
-| Next | Video project with titles, thumbnails, tags, description, editing notes, B-roll |
-| Next | Teleprompter with speed control and pause |
-| Next | Archive of published videos with YouTube link |
+| v2 (`0.2.0`) | Teleprompter with speed control and pause |
+| v2 (`0.3.0`) | Video project with title options, thumbnails, tags, description, editing notes, B-roll |
+| v2 (`0.4.0`) | Kanban board with the video lifecycle |
+| v2 (`0.5.0`) | Archive of published videos with YouTube link |
 | Later | Possible YouTube integration (deliberately left open) |
+
+The MVP is specified in [`spec/mvp-v1.md`](spec/mvp-v1.md), v2 in [`spec/v2.md`](spec/v2.md).
 
 ## 7. Out of Scope (Non-Goals)
 
@@ -133,4 +137,16 @@ Each video project bundles:
 | **Quote** | A passage saved with a source, optionally with its page or timestamp |
 | **Source list** | Automatically generated link list of a video project's sources for the video description |
 | **Category** | Topic of an idea or video (e.g. "Norse Mythology") with a colour, used for filtering; one shared list for ideas and video projects, names unique ignoring case |
-| **Archive** | Collection of published videos, searchable, with a link to the YouTube video |
+| **Kanban board** | The view of all video projects in production, one column per stage from Research to Upload |
+| **Publish** | Moving a video project to the Published stage; it leaves the Kanban board for the archive |
+| **Archive** | Collection of published videos, searchable, with a link to the YouTube video and the publish date |
+| **Title option** | One candidate title for a video project; the option matching the project's title is the final one. Not to be confused with an **Idea** |
+| **Thumbnail draft** | An image or sketch uploaded as a candidate thumbnail for a video project |
+| **Final thumbnail** | The one thumbnail draft of a video project marked as final, if any |
+| **Tag** | A free keyword of a video project, copied into YouTube; not a **Category** |
+| **Description** | The text of a video's YouTube description, written per video project |
+| **Description footer** | Text shared by all videos (e.g. channel links), added after the source list whenever a description is copied |
+| **Editing notes** | One free note per video project for the edit: cuts, music, pacing |
+| **B-roll list** | The images and clips a video needs: its script's stage directions plus extra items, each ticked off once found |
+| **Extra item** | A B-roll list entry added by hand because it has no stage direction in the script |
+| **Teleprompter** | Full-screen, keyboard-controlled view that scrolls the script for reading it aloud |

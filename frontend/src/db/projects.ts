@@ -16,6 +16,7 @@ import {
   type VideoStage,
   videoProject,
 } from "./schema";
+import { seedTitleOption, syncTitleOptionsOnRename } from "./title-options";
 
 /** An empty Tiptap document, the content of a new section. */
 export const EMPTY_DOC = JSON.stringify({
@@ -51,7 +52,8 @@ function wordsByProject(db: Db, projectIds: string[]): Map<string, number> {
 /**
  * Turns an idea into a video project in one transaction: the project starts
  * in Research with the idea's title, keeps its note and rating as the
- * original idea, gets its categories and the six empty template sections,
+ * original idea, gets its categories, the six empty template sections and
+ * one title option (its title),
  * and the idea is deleted. Returns undefined if the idea doesn't exist.
  */
 export function makeVideoProject(
@@ -91,6 +93,7 @@ export function makeVideoProject(
         })),
       )
       .run();
+    seedTitleOption(tx, project.id, project.title, now);
     tx.delete(idea).where(eq(idea.id, ideaId)).run();
     return project;
   });
@@ -167,9 +170,17 @@ export function listSections(db: Db, projectId: string): Section[] {
     .flatMap((top) => [top, ...all.filter((s) => s.parent === top.id)]);
 }
 
-export type VideoProjectChanges = { title?: string; stage?: VideoStage };
+export type VideoProjectChanges = {
+  title?: string;
+  stage?: VideoStage;
+  editingNote?: string;
+  description?: string;
+};
 
-/** Changes the title (never blank) or stage, and bumps `updated`. */
+/**
+ * Changes the title (never blank), stage, editing note or description, and bumps
+ * `updated`. A new title keeps the title options in step (spec §5.2).
+ */
 export function updateVideoProject(
   db: Db,
   id: string,
@@ -188,12 +199,26 @@ export function updateVideoProject(
     }
     values.stage = changes.stage;
   }
-  return db
-    .update(videoProject)
-    .set({ ...values, updated: now.toISOString() })
-    .where(eq(videoProject.id, id))
-    .returning()
-    .get();
+  if (changes.editingNote !== undefined)
+    values.editingNote = changes.editingNote;
+  if (changes.description !== undefined)
+    values.description = changes.description;
+  return db.transaction((tx) => {
+    if (values.title !== undefined) {
+      const old = tx
+        .select({ title: videoProject.title })
+        .from(videoProject)
+        .where(eq(videoProject.id, id))
+        .get();
+      if (old) syncTitleOptionsOnRename(tx, id, old.title, values.title);
+    }
+    return tx
+      .update(videoProject)
+      .set({ ...values, updated: now.toISOString() })
+      .where(eq(videoProject.id, id))
+      .returning()
+      .get();
+  });
 }
 
 export function addProjectCategory(
@@ -237,8 +262,9 @@ export function removeProjectCategory(
 }
 
 /**
- * Deletes a project with its sections and category links (one statement,
- * cascading). Sources stay in the library.
+ * Deletes a project with its sections, category links, title options, tags,
+ * B-roll items and thumbnail-draft records (one statement, cascading).
+ * Sources stay in the library.
  */
 export function deleteVideoProject(db: Db, id: string): void {
   db.delete(videoProject).where(eq(videoProject.id, id)).run();

@@ -2,6 +2,7 @@
 
 import type { Editor, JSONContent } from "@tiptap/react";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   startTransition,
   useEffect,
@@ -10,8 +11,10 @@ import {
   useState,
 } from "react";
 import type { Section, SectionKind } from "@/db/schema";
+import { directionPosition, scriptItemTarget } from "@/lib/broll";
 import { speakingTime, wordsLine } from "@/lib/format";
 import { SECTION_KIND_LABELS } from "@/lib/labels";
+import { enterFullscreen } from "@/lib/screen";
 import {
   countDirections,
   countWords,
@@ -21,6 +24,10 @@ import {
   moveItem,
   parseDoc,
 } from "@/lib/script";
+import {
+  markOpenedFromScript,
+  takeReadingEntry,
+} from "@/lib/teleprompter-return";
 import { EntryEditor } from "./entry-editor";
 import {
   addSectionAction,
@@ -43,18 +50,21 @@ type ScriptEditorProps = {
   sections: Section[];
 };
 
-/** Saves a section's pending text now, cancelling its scheduled save. */
+/**
+ * Saves a section's pending text now, cancelling its scheduled save.
+ * Resolves once it's saved.
+ */
 function flushSave(
   timers: Map<string, ReturnType<typeof setTimeout>>,
   pending: Map<string, string>,
   id: string,
-) {
+): Promise<void> {
   clearTimeout(timers.get(id));
   timers.delete(id);
   const content = pending.get(id);
-  if (content === undefined) return;
+  if (content === undefined) return Promise.resolve();
   pending.delete(id);
-  void saveSection(id, content);
+  return saveSection(id, content).then(() => undefined);
 }
 
 const entryName = (s: Section) =>
@@ -108,6 +118,7 @@ export function ScriptEditor({
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const savedTitles = useRef(new Map<string, string>());
   const pending = useRef(new Map<string, string>());
+  const router = useRouter();
 
   const shown = (s: Section): Section =>
     s.id in titles ? { ...s, title: titles[s.id] } : s;
@@ -120,6 +131,7 @@ export function ScriptEditor({
   const tops = sections.filter((s) => s.parent === null);
   const missing = missingKinds(tops.map((s) => s.kind as SectionKind));
   const totalWords = sections.reduce((n, s) => n + wordsOf(s), 0);
+  const canRead = sections.some((s) => hasContent(docOf(s)));
   // An outline row's words: the Main part's row includes its subsections.
   const rowWords = (s: Section) =>
     wordsOf(s) +
@@ -128,6 +140,42 @@ export function ScriptEditor({
       .reduce((n, x) => n + wordsOf(x), 0);
 
   const flush = (id: string) => flushSave(timers.current, pending.current, id);
+
+  // From the B-roll list (?entry=…&direction=…): open that entry, then
+  // scroll to the direction and make it glow briefly. If it's gone, the
+  // entry still opens, with no glow.
+  const searchParams = useSearchParams();
+  const [glow, setGlow] = useState<{ sectionId: string; index: number }>();
+  const handledLink = useRef(false);
+  useEffect(() => {
+    if (handledLink.current) return;
+    handledLink.current = true;
+    const target = scriptItemTarget(searchParams);
+    if (!target || !saved.some((s) => s.id === target.sectionId)) return;
+    setSelectedId(target.sectionId);
+    if (target.index !== undefined) {
+      setGlow({ sectionId: target.sectionId, index: target.index });
+    }
+    // Drop the parameters, so a reload doesn't jump again.
+    router.replace(`/projects/${projectId}`, { scroll: false });
+  }, [searchParams, saved, projectId, router]);
+
+  useEffect(() => {
+    if (!glow || !editor || selected?.id !== glow.sectionId) return;
+    setGlow(undefined);
+    const pos = directionPosition(editor.state.doc, glow.index);
+    const dom = pos === undefined ? null : editor.view.nodeDOM(pos);
+    if (!(dom instanceof HTMLElement)) return;
+    dom.scrollIntoView({ block: "center", behavior: "smooth" });
+    dom.classList.add("direction-glow");
+    setTimeout(() => dom.classList.remove("direction-glow"), 2000);
+  }, [glow, editor, selected?.id]);
+
+  // Back from the teleprompter: select the entry that was being read.
+  useEffect(() => {
+    const id = takeReadingEntry(projectId);
+    if (id && saved.some((s) => s.id === id)) setSelectedId(id);
+  }, [projectId, saved]);
 
   function change(id: string, doc: JSONContent) {
     setDocs((prev) => ({ ...prev, [id]: doc as DocNode }));
@@ -144,7 +192,7 @@ export function ScriptEditor({
     const t = timers.current;
     const p = pending.current;
     const flushAll = () => {
-      for (const id of [...p.keys()]) flushSave(t, p, id);
+      for (const id of [...p.keys()]) void flushSave(t, p, id);
     };
     window.addEventListener("pagehide", flushAll);
     return () => {
@@ -156,8 +204,19 @@ export function ScriptEditor({
   /** Saves the open entry's text and title before another one opens. */
   function leave() {
     if (!selected) return;
-    flush(selected.id);
+    void flush(selected.id);
     commitTitle(selected.id);
+  }
+
+  /** Opens the teleprompter at the open entry, once all text is saved. */
+  async function openTeleprompter() {
+    if (!selected || !canRead) return;
+    // Fullscreen needs the click itself, so it comes before any waiting.
+    enterFullscreen(document);
+    commitTitle(selected.id);
+    await Promise.all([...pending.current.keys()].map(flush));
+    markOpenedFromScript(projectId);
+    router.push(`/projects/${projectId}/teleprompter?entry=${selected.id}`);
   }
 
   function open(id: string) {
@@ -205,7 +264,7 @@ export function ScriptEditor({
   }
 
   function remove(s: Section) {
-    flush(s.id);
+    void flush(s.id);
     if (selected?.id === s.id || selected?.parent === s.id) {
       const rest = sections.filter((x) => x.id !== s.id && x.parent !== s.id);
       setSelectedId(rest[0]?.id);
@@ -270,6 +329,34 @@ export function ScriptEditor({
                   {entryName(selected)}
                 </h2>
               )}
+              <span className="group relative shrink-0">
+                <button
+                  type="button"
+                  aria-disabled={!canRead}
+                  aria-describedby="teleprompter-tip"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={openTeleprompter}
+                  className={`flex items-center gap-2 rounded-xl border border-accent/60 bg-accent/10 px-3 py-2 font-bold font-heading text-[13px] text-accent-glow tracking-[0.78px] ${
+                    canRead
+                      ? "hover:bg-accent/15"
+                      : "cursor-not-allowed opacity-40"
+                  }`}
+                >
+                  <span aria-hidden className="text-[11px]">
+                    ▷
+                  </span>
+                  Teleprompter
+                </button>
+                <span
+                  id="teleprompter-tip"
+                  role="tooltip"
+                  className="pointer-events-none absolute top-full right-0 z-20 mt-2 hidden w-max max-w-[300px] rounded-lg border border-border-strong bg-surface-3 px-3 py-2 font-label text-[12px] text-fg-muted leading-snug shadow-[0_10px_30px_rgb(0_0_0/0.55)] group-focus-within:block group-hover:block"
+                >
+                  {canRead
+                    ? `Starts at “${entryName(selected)}” · Select another entry in the outline to start there`
+                    : "Nothing to read yet · Write something in any section first"}
+                </span>
+              </span>
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
@@ -331,7 +418,7 @@ export function ScriptEditor({
                   : "Start writing…"
               }
               onChange={(doc) => change(selected.id, doc)}
-              onBlur={() => flush(selected.id)}
+              onBlur={() => void flush(selected.id)}
               onEditor={setEditor}
             />
           </>

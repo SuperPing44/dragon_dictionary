@@ -23,6 +23,8 @@
   --color-gold: #e9c46a;
   --color-amber: #f2a93b;
   --color-danger: #ff6b8a;
+  /* bg/prompter: the teleprompter's near-black background. */
+  --color-prompter: #050308;
 
   --font-heading: var(--font-cinzel);
   --font-logo: var(--font-cinzel-decorative);
@@ -75,6 +77,25 @@ body {
   margin-top: 0.6em;
 }
 
+/*
+ * Teleprompter: text fades out above the reading band (fully faded from
+ * 24% of the screen height up) and below it (from 70%, gone by 98%).
+ */
+.prompter-fade {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 24%,
+    #000 31%,
+    #000 70%,
+    transparent 98%
+  );
+}
+
+.prompter-text p + p {
+  margin-top: 0.5em;
+}
+
 .script-text p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
@@ -82,4 +103,29 @@ body {
   pointer-events: none;
   color: var(--color-fg-faint);
   font-style: italic;
+}
+
+/* A stage direction opened from the B-roll list glows briefly (Figma F5). */
+@keyframes direction-glow {
+  0%,
+  60% {
+    box-shadow:
+      0 0 0 2px var(--color-amber),
+      0 0 18px rgb(242 168 59 / 0.75);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.direction-glow {
+  border-radius: 0.5rem;
+  animation: direction-glow 2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .direction-glow {
+    animation-duration: 0.01s;
+    box-shadow: 0 0 0 2px var(--color-amber);
+  }
 }

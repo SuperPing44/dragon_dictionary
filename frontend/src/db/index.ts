@@ -4,6 +4,7 @@ import { io } from "next/cache";
 import { v7 as uuidv7 } from "uuid";
 import type { SourceValues } from "@/lib/sources";
 import * as backupQueries from "./backup";
+import * as brollQueries from "./broll";
 import * as categoryQueries from "./categories";
 import { getDb, resolveDataDir, resolveFilesRoot } from "./connection";
 import * as fileQueries from "./files";
@@ -15,6 +16,9 @@ import * as quoteQueries from "./quotes";
 import type { Category, CategoryColour, SectionKind } from "./schema";
 import * as sectionQueries from "./sections";
 import * as sourceQueries from "./sources";
+import * as tagQueries from "./tags";
+import * as thumbQueries from "./thumbnails";
+import * as titleQueries from "./title-options";
 
 // Every query goes through here. better-sqlite3 is synchronous, so each read
 // awaits io() first; otherwise cacheComponents would prerender it.
@@ -175,9 +179,154 @@ export async function removeProjectCategory(
   projectQueries.removeProjectCategory(getDb(), projectId, categoryId);
 }
 
+/** Deletes a project; its thumbnail files go once the records are gone. */
 export async function deleteVideoProject(id: string) {
   await io();
   projectQueries.deleteVideoProject(getDb(), id);
+  await thumbQueries.removeProjectThumbnails(resolveFilesRoot(), id);
+}
+
+export async function listThumbnailDrafts(projectId: string) {
+  await io();
+  return thumbQueries.listThumbnailDrafts(getDb(), projectId);
+}
+
+export async function getThumbnailDraft(id: string) {
+  await io();
+  return thumbQueries.getThumbnailDraft(getDb(), id);
+}
+
+/**
+ * Stores an uploaded image as a thumbnail draft. Throws NotAnImageError or
+ * TooLargeError; returns undefined for an unknown project.
+ */
+export async function uploadThumbnailDraft(
+  projectId: string,
+  originalName: string,
+  body: AsyncIterable<Uint8Array>,
+) {
+  await io();
+  const db = getDb();
+  if (!projectQueries.getVideoProject(db, projectId)) return undefined;
+  const bytes = await thumbQueries.readUpload(body);
+  return thumbQueries.addThumbnailDraft(
+    db,
+    resolveFilesRoot(),
+    { id: uuidv7(), videoProject: projectId, originalName },
+    bytes,
+  );
+}
+
+/** Where a recorded thumbnail draft is on disk. */
+export function thumbnailFilePath(draft: {
+  id: string;
+  videoProject: string;
+  ext: string;
+}) {
+  return thumbQueries.thumbnailPath(resolveFilesRoot(), draft);
+}
+
+export async function setThumbnailNote(id: string, note: string) {
+  await io();
+  thumbQueries.setThumbnailNote(getDb(), id, note);
+}
+
+export async function markThumbnailFinal(projectId: string, draftId: string) {
+  await io();
+  thumbQueries.markThumbnailFinal(getDb(), projectId, draftId);
+}
+
+export async function removeThumbnailDraft(id: string) {
+  await io();
+  await thumbQueries.removeThumbnailDraft(getDb(), resolveFilesRoot(), id);
+}
+
+export async function listTitleOptions(projectId: string) {
+  await io();
+  return titleQueries.listTitleOptions(getDb(), projectId);
+}
+
+export async function addTitleOption(projectId: string, text: string) {
+  await io();
+  return titleQueries.addTitleOption(getDb(), projectId, text);
+}
+
+export async function editTitleOption(id: string, text: string) {
+  await io();
+  return titleQueries.editTitleOption(getDb(), id, text);
+}
+
+export async function deleteTitleOption(id: string) {
+  await io();
+  titleQueries.deleteTitleOption(getDb(), id);
+}
+
+export async function reorderTitleOptions(
+  projectId: string,
+  orderedIds: string[],
+) {
+  await io();
+  titleQueries.reorderTitleOptions(getDb(), projectId, orderedIds);
+}
+
+export async function markTitleOptionFinal(id: string) {
+  await io();
+  titleQueries.markTitleOptionFinal(getDb(), id);
+}
+
+export async function listProjectTags(projectId: string) {
+  await io();
+  return tagQueries.listProjectTags(getDb(), projectId);
+}
+
+export async function addProjectTag(projectId: string, text: string) {
+  await io();
+  return tagQueries.addProjectTag(getDb(), projectId, text);
+}
+
+export async function removeProjectTag(projectId: string, text: string) {
+  await io();
+  tagQueries.removeProjectTag(getDb(), projectId, text);
+}
+
+/** Tags used on other projects, for suggestions. */
+export async function tagUsage(exceptProjectId: string) {
+  await io();
+  return tagQueries.tagUsage(getDb(), exceptProjectId);
+}
+
+export async function listBrollItems(projectId: string) {
+  await io();
+  return brollQueries.listBrollItems(getDb(), projectId);
+}
+
+export async function setScriptItemFound(
+  sectionId: string,
+  index: number,
+  found: boolean,
+) {
+  await io();
+  return brollQueries.setScriptItemFound(getDb(), sectionId, index, found);
+}
+
+export async function addBrollItem(projectId: string, text: string) {
+  await io();
+  return brollQueries.addBrollItem(getDb(), projectId, text);
+}
+
+export async function editBrollItem(id: string, text: string) {
+  await io();
+  brollQueries.editBrollItem(getDb(), id, text);
+}
+
+export async function setBrollItemFound(id: string, found: boolean) {
+  await io();
+  brollQueries.setBrollItemFound(getDb(), id, found);
+}
+
+export async function deleteBrollItem(id: string) {
+  await io();
+  brollQueries.deleteBrollItem(getDb(), id);
 }
 
 export async function saveSectionContent(sectionId: string, content: string) {
@@ -222,6 +371,31 @@ export async function getSpeakingRate() {
 export async function setSpeakingRate(rate: number) {
   await io();
   metaQueries.setSpeakingRate(getDb(), rate);
+}
+
+export async function getDescriptionFooter() {
+  await io();
+  return metaQueries.getDescriptionFooter(getDb());
+}
+
+export async function setDescriptionFooter(footer: string) {
+  await io();
+  metaQueries.setDescriptionFooter(getDb(), footer);
+}
+
+export async function getTeleprompterSettings() {
+  await io();
+  return metaQueries.getTeleprompterSettings(getDb());
+}
+
+export async function setTeleprompterSpeedLevel(level: number) {
+  await io();
+  metaQueries.setTeleprompterSpeedLevel(getDb(), level);
+}
+
+export async function setTeleprompterTextSize(size: number) {
+  await io();
+  metaQueries.setTeleprompterTextSize(getDb(), size);
 }
 
 export async function listSources(query?: sourceQueries.SourceQuery) {
@@ -394,6 +568,8 @@ export {
   type Source,
   type SourceFile,
   type SourceType,
+  type ThumbnailDraft,
+  type TitleOption,
   VIDEO_STAGES,
   type VideoProject,
   type VideoStage,
@@ -403,3 +579,5 @@ export {
   type SourceSort,
   type SourceWithProjects,
 } from "./sources";
+export { NotAnImageError, TooLargeError } from "./thumbnails";
+export type { TitleOptionRefusal, TitleOptionResult } from "./title-options";

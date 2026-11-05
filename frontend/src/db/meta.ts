@@ -1,4 +1,10 @@
 import { eq } from "drizzle-orm";
+import {
+  DEFAULT_SPEED_LEVEL,
+  DEFAULT_TEXT_SIZE,
+  isValidSpeedLevel,
+  isValidTextSize,
+} from "@/lib/teleprompter";
 import type { Db } from "./connection";
 import { appMeta } from "./schema";
 
@@ -41,4 +47,47 @@ export function setSpeakingRate(db: Db, rate: number): void {
     );
   }
   setMeta(db, RATE_KEY, String(rate));
+}
+
+const SPEED_KEY = "teleprompter_speed_level";
+const SIZE_KEY = "teleprompter_text_size";
+
+export type TeleprompterSettings = { speedLevel: number; textSize: number };
+
+/** The teleprompter's speed level and text size, remembered app-wide. */
+export function getTeleprompterSettings(db: Db): TeleprompterSettings {
+  const speed = Number(getMeta(db, SPEED_KEY));
+  const size = Number(getMeta(db, SIZE_KEY));
+  return {
+    speedLevel: isValidSpeedLevel(speed) ? speed : DEFAULT_SPEED_LEVEL,
+    textSize: isValidTextSize(size) ? size : DEFAULT_TEXT_SIZE,
+  };
+}
+
+/** Sets the speed level: a whole number from 1 to 20. */
+export function setTeleprompterSpeedLevel(db: Db, level: number): void {
+  if (!isValidSpeedLevel(level)) {
+    throw new Error("The speed level must be a whole number from 1 to 20.");
+  }
+  setMeta(db, SPEED_KEY, String(level));
+}
+
+/** Sets the text size: 32 to 96 px, in steps of 4. */
+export function setTeleprompterTextSize(db: Db, size: number): void {
+  if (!isValidTextSize(size)) {
+    throw new Error("The text size must be 32 to 96 px, in steps of 4.");
+  }
+  setMeta(db, SIZE_KEY, String(size));
+}
+
+const FOOTER_KEY = "description_footer";
+
+/** The description footer added to every project's copied description. */
+export function getDescriptionFooter(db: Db): string {
+  return getMeta(db, FOOTER_KEY) ?? "";
+}
+
+/** Sets the footer; plain text, empty allowed. */
+export function setDescriptionFooter(db: Db, footer: string): void {
+  setMeta(db, FOOTER_KEY, footer);
 }
