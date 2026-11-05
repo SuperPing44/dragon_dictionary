@@ -128,6 +128,7 @@ export type KeyAction =
   | "next"
   | "top"
   | "leave"
+  | "fullscreen"
   | "hints";
 
 /** The parts of a keydown event the mapping reads. */
@@ -144,6 +145,7 @@ const BY_CODE: Record<string, KeyAction> = {
   ArrowRight: "next",
   Home: "top",
   Escape: "leave",
+  KeyF: "fullscreen",
 };
 
 // Matched on the character: layouts put these on different keys (German

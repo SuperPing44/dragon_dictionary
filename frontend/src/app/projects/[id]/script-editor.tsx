@@ -13,6 +13,7 @@ import {
 import type { Section, SectionKind } from "@/db/schema";
 import { speakingTime, wordsLine } from "@/lib/format";
 import { SECTION_KIND_LABELS } from "@/lib/labels";
+import { enterFullscreen } from "@/lib/screen";
 import {
   countDirections,
   countWords,
@@ -179,6 +180,8 @@ export function ScriptEditor({
   /** Opens the teleprompter at the open entry, once all text is saved. */
   async function openTeleprompter() {
     if (!selected || !canRead) return;
+    // Fullscreen needs the click itself, so it comes before any waiting.
+    enterFullscreen(document);
     commitTitle(selected.id);
     await Promise.all([...pending.current.keys()].map(flush));
     markOpenedFromScript(projectId);

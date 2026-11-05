@@ -8,8 +8,10 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { flushSync } from "react-dom";
+import { enterFullscreen, holdScreenAwake } from "@/lib/screen";
 import {
   advance,
   jumpTarget,
@@ -31,6 +33,18 @@ import { saveSpeedLevelAction, saveTextSizeAction } from "./actions";
 /** How long a change waits before it's saved, so a held key saves once. */
 const SAVE_DELAY_MS = 500;
 const TOAST_MS = 1200;
+
+/**
+ * Esc in fullscreen is handled by the browser; if its keydown still
+ * reaches the page right after, it must not count as "leave".
+ */
+const ESC_AFTER_EXIT_MS = 500;
+
+const subscribeFullscreen = (onChange: () => void) => {
+  document.addEventListener("fullscreenchange", onChange);
+  return () => document.removeEventListener("fullscreenchange", onChange);
+};
+const isFullscreen = () => document.fullscreenElement !== null;
 
 type PendingSave = { timer: ReturnType<typeof setTimeout>; save: () => void };
 
@@ -82,6 +96,23 @@ export function Teleprompter({
   const y = useRef(0);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const saves = useRef(new Map<string, PendingSave>());
+  const exitedFullscreenAt = useRef(Number.NEGATIVE_INFINITY);
+  const fullscreen = useSyncExternalStore(
+    subscribeFullscreen,
+    isFullscreen,
+    () => false,
+  );
+
+  // Leaving fullscreen (Esc, or the browser's own controls) pauses.
+  const onFullscreenChange = useEffectEvent(() => {
+    if (document.fullscreenElement) return;
+    exitedFullscreenAt.current = performance.now();
+    setRunning(false);
+  });
+  useEffect(() => subscribeFullscreen(() => onFullscreenChange()), []);
+
+  // The screen stays awake while the teleprompter is open, paused or not.
+  useEffect(() => holdScreenAwake(navigator, document), []);
   const reading = useRef(startId);
   const column = useRef<HTMLDivElement>(null);
   const endMarker = useRef<HTMLDivElement>(null);
@@ -255,7 +286,19 @@ export function Teleprompter({
       case "hints":
         if (!running) setHints(true);
         return;
+      case "fullscreen":
+        return enterFullscreen(document);
       case "leave":
+        if (document.fullscreenElement) {
+          void document.exitFullscreen();
+          return;
+        }
+        if (
+          performance.now() - exitedFullscreenAt.current <
+          ESC_AFTER_EXIT_MS
+        ) {
+          return;
+        }
         return leave();
     }
   }
@@ -327,6 +370,12 @@ export function Teleprompter({
       {!running && !ended && (
         <p className="absolute top-6 left-1/2 -translate-x-1/2 font-semibold text-[13px] text-fg-muted leading-normal tracking-[0.2em]">
           ❚❚ PAUSED
+        </p>
+      )}
+
+      {!fullscreen && (
+        <p className="absolute top-6 left-6 font-medium text-[13px] text-fg-faint leading-normal">
+          F: fullscreen · Esc: back to Script
         </p>
       )}
 
