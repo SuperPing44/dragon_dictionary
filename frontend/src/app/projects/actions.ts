@@ -4,11 +4,14 @@ import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { CategoryPick } from "@/components/category-picker";
 import {
+  addBrollItem,
   addProjectCategory,
   addProjectTag,
   addTitleOption,
+  deleteBrollItem,
   deleteTitleOption,
   deleteVideoProject,
+  editBrollItem,
   editTitleOption,
   linkSource,
   markThumbnailFinal,
@@ -17,6 +20,8 @@ import {
   removeProjectTag,
   removeThumbnailDraft,
   reorderTitleOptions,
+  setBrollItemFound,
+  setScriptItemFound,
   setThumbnailNote,
   type TitleOptionRefusal,
   unlinkSource,
@@ -123,5 +128,34 @@ export async function setThumbnailNoteAction(id: string, note: string) {
 
 export async function removeThumbnailDraftAction(id: string) {
   await removeThumbnailDraft(id);
+  refresh();
+}
+
+export async function setScriptItemFoundAction(
+  sectionId: string,
+  index: number,
+  found: boolean,
+) {
+  await setScriptItemFound(sectionId, index, found);
+  refresh();
+}
+
+export async function addBrollItemAction(projectId: string, text: string) {
+  await addBrollItem(projectId, text);
+  refresh();
+}
+
+export async function editBrollItemAction(id: string, text: string) {
+  await editBrollItem(id, text);
+  refresh();
+}
+
+export async function setBrollItemFoundAction(id: string, found: boolean) {
+  await setBrollItemFound(id, found);
+  refresh();
+}
+
+export async function deleteBrollItemAction(id: string) {
+  await deleteBrollItem(id);
   refresh();
 }

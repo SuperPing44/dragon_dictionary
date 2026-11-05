@@ -4,6 +4,7 @@ import { io } from "next/cache";
 import { v7 as uuidv7 } from "uuid";
 import type { SourceValues } from "@/lib/sources";
 import * as backupQueries from "./backup";
+import * as brollQueries from "./broll";
 import * as categoryQueries from "./categories";
 import { getDb, resolveDataDir, resolveFilesRoot } from "./connection";
 import * as fileQueries from "./files";
@@ -292,6 +293,40 @@ export async function removeProjectTag(projectId: string, text: string) {
 export async function tagUsage(exceptProjectId: string) {
   await io();
   return tagQueries.tagUsage(getDb(), exceptProjectId);
+}
+
+export async function listBrollItems(projectId: string) {
+  await io();
+  return brollQueries.listBrollItems(getDb(), projectId);
+}
+
+export async function setScriptItemFound(
+  sectionId: string,
+  index: number,
+  found: boolean,
+) {
+  await io();
+  return brollQueries.setScriptItemFound(getDb(), sectionId, index, found);
+}
+
+export async function addBrollItem(projectId: string, text: string) {
+  await io();
+  return brollQueries.addBrollItem(getDb(), projectId, text);
+}
+
+export async function editBrollItem(id: string, text: string) {
+  await io();
+  brollQueries.editBrollItem(getDb(), id, text);
+}
+
+export async function setBrollItemFound(id: string, found: boolean) {
+  await io();
+  brollQueries.setBrollItemFound(getDb(), id, found);
+}
+
+export async function deleteBrollItem(id: string) {
+  await io();
+  brollQueries.deleteBrollItem(getDb(), id);
 }
 
 export async function saveSectionContent(sectionId: string, content: string) {
