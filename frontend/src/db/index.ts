@@ -15,6 +15,7 @@ import * as quoteQueries from "./quotes";
 import type { Category, CategoryColour, SectionKind } from "./schema";
 import * as sectionQueries from "./sections";
 import * as sourceQueries from "./sources";
+import * as tagQueries from "./tags";
 import * as titleQueries from "./title-options";
 
 // Every query goes through here. better-sqlite3 is synchronous, so each read
@@ -212,6 +213,27 @@ export async function reorderTitleOptions(
 export async function markTitleOptionFinal(id: string) {
   await io();
   titleQueries.markTitleOptionFinal(getDb(), id);
+}
+
+export async function listProjectTags(projectId: string) {
+  await io();
+  return tagQueries.listProjectTags(getDb(), projectId);
+}
+
+export async function addProjectTag(projectId: string, text: string) {
+  await io();
+  return tagQueries.addProjectTag(getDb(), projectId, text);
+}
+
+export async function removeProjectTag(projectId: string, text: string) {
+  await io();
+  tagQueries.removeProjectTag(getDb(), projectId, text);
+}
+
+/** Tags used on other projects, for suggestions. */
+export async function tagUsage(exceptProjectId: string) {
+  await io();
+  return tagQueries.tagUsage(getDb(), exceptProjectId);
 }
 
 export async function saveSectionContent(sectionId: string, content: string) {

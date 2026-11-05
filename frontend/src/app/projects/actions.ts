@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import type { CategoryPick } from "@/components/category-picker";
 import {
   addProjectCategory,
+  addProjectTag,
   addTitleOption,
   deleteTitleOption,
   deleteVideoProject,
@@ -12,6 +13,7 @@ import {
   linkSource,
   markTitleOptionFinal,
   removeProjectCategory,
+  removeProjectTag,
   reorderTitleOptions,
   type TitleOptionRefusal,
   unlinkSource,
@@ -89,5 +91,16 @@ export async function reorderTitleOptionsAction(
 
 export async function markTitleOptionFinalAction(id: string) {
   await markTitleOptionFinal(id);
+  refresh();
+}
+
+/** Adds tags in order; duplicates (ignoring case) are skipped. */
+export async function addTagsAction(projectId: string, texts: string[]) {
+  for (const text of texts) await addProjectTag(projectId, text);
+  refresh();
+}
+
+export async function removeTagAction(projectId: string, text: string) {
+  await removeProjectTag(projectId, text);
   refresh();
 }
