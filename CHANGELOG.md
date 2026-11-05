@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-05
+
+Video project fields, as specified in [`docs/spec/v2.md`](docs/spec/v2.md) §5.2. Its migration runs at startup, with a backup taken first.
+
 ### Added
 
-- Teleprompter: opened from the Script tab at the selected entry, it shows the script read-only in the "Broadcast" look and scrolls with Space to pause and resume (#43).
-- Teleprompter keys: ↑/↓ speed (levels 1–20), +/− text size (32–96 px), ←/→ previous and next entry, Home back to the top and ? for the key hints. Speed and size are remembered app-wide (#44).
-- Teleprompter fullscreen and wake lock: opening enters fullscreen, Esc there pauses, F goes back into fullscreen, and the screen stays awake while the teleprompter is open (#45).
 - Publishing and Editing tabs on the video project page, with editing notes on the Editing tab, saved as you type. The database gains the 0.3.0 project fields (title options, tags, thumbnail drafts, B-roll items), and every existing project gets its title as its first title option (#46).
 - Title options on the Publishing tab: add, edit, drag to reorder and delete title ideas, each with a length counter against YouTube's 100 characters. Mark as final sets the project title, the final option shows a gold Final badge, and renaming the project keeps the options in step (#47).
 - Tags on the Publishing tab: chips added with Enter or a comma, kept as typed and unique ignoring case, removed with ✕ or Backspace. Typing suggests tags from other projects with how many use them, and Copy gives them comma-separated with a counter against YouTube's 500 characters (#48).
@@ -21,6 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Thumbnail drafts, enlarged: clicking a card opens it over the dimmed page, with ←/→ between drafts, Esc to close, its size and file details, Mark as final, Download under the original name, Delete and an editable note. Ctrl+V anywhere on the Publishing tab adds a pasted image as a draft (#52).
 - B-roll list on the Editing tab: the script's image directions, live and in script order under their section headings, plus extra items of your own. Tick items as found (a progress bar shows n/m found), and Copy list gives lines like "Hook: wolf eye close-up". A found direction shows a small ✓ on its chip in the script editor (#53).
 - B-roll list: clicking a script item opens the Script tab at its entry and scrolls to the image direction, which glows briefly. If the direction is gone, the entry still opens (#54).
+
+## [0.2.0] - 2026-11-05
+
+The teleprompter, as specified in [`docs/spec/v2.md`](docs/spec/v2.md) §5.1.
+
+### Added
+
+- Teleprompter: opened from the Script tab at the selected entry, it shows the script read-only in the "Broadcast" look and scrolls with Space to pause and resume (#43).
+- Teleprompter keys: ↑/↓ speed (levels 1–20), +/− text size (32–96 px), ←/→ previous and next entry, Home back to the top and ? for the key hints. Speed and size are remembered app-wide (#44).
+- Teleprompter fullscreen and wake lock: opening enters fullscreen, Esc there pauses, F goes back into fullscreen, and the screen stays awake while the teleprompter is open (#45).
 
 ## [0.1.0] - 2026-10-26
 
@@ -39,5 +50,7 @@ MVP v1, as specified in [`docs/spec/mvp-v1.md`](docs/spec/mvp-v1.md).
 - Automatic backups to OneDrive: on start, before migrations and on demand, with the status shown in the sidebar.
 - Daily copy started from a desktop shortcut, plus an update script.
 
-[Unreleased]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/SuperPing44/dragon_dictionary/releases/tag/v0.1.0
