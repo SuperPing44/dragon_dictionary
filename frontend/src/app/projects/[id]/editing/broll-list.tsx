@@ -1,12 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { startTransition, useOptimistic, useState } from "react";
 import {
   type BrollGroup,
   brollCopyText,
   brollProgress,
   type ExtraBrollItem,
+  scriptItemHref,
 } from "@/lib/broll";
 import {
   addBrollItemAction,
@@ -137,7 +139,20 @@ export function BrollList({ projectId, groups, extras }: BrollListProps) {
                       ),
                     )
                   }
-                />
+                >
+                  <Link
+                    href={scriptItemHref(projectId, item)}
+                    title="Open in script"
+                    className="flex items-center gap-3"
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      {item.description}
+                    </span>
+                    <span className="shrink-0 font-label font-medium text-[13px] text-accent-glow opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                      Open in script →
+                    </span>
+                  </Link>
+                </ItemRow>
               </li>
             ))}
           </ul>

@@ -112,3 +112,47 @@ export function brollCopyText(
     ...extras.map((e) => `Extra: ${e.text}`),
   ].join("\n");
 }
+
+/** The Script tab, opened at a B-roll item's entry and direction. */
+export function scriptItemHref(
+  projectId: string,
+  item: Pick<ScriptBrollItem, "sectionId" | "index">,
+): string {
+  return `/projects/${projectId}?entry=${encodeURIComponent(item.sectionId)}&direction=${item.index}`;
+}
+
+/** Reads a Script tab link's target; undefined without a valid one. */
+export function scriptItemTarget(params: {
+  get(name: string): string | null;
+}): { sectionId: string; index: number | undefined } | undefined {
+  const sectionId = params.get("entry");
+  if (!sectionId) return undefined;
+  const raw = params.get("direction");
+  const index = raw !== null && /^\d+$/.test(raw) ? Number(raw) : undefined;
+  return { sectionId, index };
+}
+
+/** The bit of a ProseMirror node the direction lookup needs. */
+type PmNode = {
+  descendants(f: (node: { type: { name: string } }, pos: number) => void): void;
+};
+
+/**
+ * The document position of the index-th stage direction (counting every
+ * direction, as the B-roll list does), or undefined if there's no such one.
+ */
+export function directionPosition(
+  doc: PmNode,
+  index: number,
+): number | undefined {
+  let seen = -1;
+  let found: number | undefined;
+  doc.descendants((node, pos) => {
+    if (found !== undefined) return;
+    if (node.type.name === "stageDirection") {
+      seen += 1;
+      if (seen === index) found = pos;
+    }
+  });
+  return found;
+}

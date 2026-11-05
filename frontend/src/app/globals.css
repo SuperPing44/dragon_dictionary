@@ -104,3 +104,28 @@ body {
   color: var(--color-fg-faint);
   font-style: italic;
 }
+
+/* A stage direction opened from the B-roll list glows briefly (Figma F5). */
+@keyframes direction-glow {
+  0%,
+  60% {
+    box-shadow:
+      0 0 0 2px var(--color-amber),
+      0 0 18px rgb(242 168 59 / 0.75);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.direction-glow {
+  border-radius: 0.5rem;
+  animation: direction-glow 2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .direction-glow {
+    animation-duration: 0.01s;
+    box-shadow: 0 0 0 2px var(--color-amber);
+  }
+}
