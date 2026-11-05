@@ -12,7 +12,7 @@ type ProjectTabsProps = {
   sourceCount: number;
 };
 
-/** Script | Sources (n), with Delete project on the tab bar. */
+/** Script | Sources (n) | Publishing | Editing, with Delete project on the tab bar. */
 export function ProjectTabs({
   projectId,
   projectTitle,
@@ -20,16 +20,36 @@ export function ProjectTabs({
 }: ProjectTabsProps) {
   const pathname = usePathname();
   const base = `/projects/${projectId}`;
-  const onSources = pathname === `${base}/sources`;
+  const at = (tab: string) => pathname === `${base}/${tab}`;
+  const onSources = at("sources");
+  const onPublishing = at("publishing");
+  const onEditing = at("editing");
   const [confirming, setConfirming] = useState(false);
 
   const tabs = [
-    { href: base, label: "Script", icon: "scroll", active: !onSources },
+    {
+      href: base,
+      label: "Script",
+      icon: "scroll",
+      active: !onSources && !onPublishing && !onEditing,
+    },
     {
       href: `${base}/sources`,
       label: `Sources · ${sourceCount}`,
       icon: "book",
       active: onSources,
+    },
+    {
+      href: `${base}/publishing`,
+      label: "Publishing",
+      icon: "upload",
+      active: onPublishing,
+    },
+    {
+      href: `${base}/editing`,
+      label: "Editing",
+      icon: "pen",
+      active: onEditing,
     },
   ];
 
@@ -80,8 +100,8 @@ export function ProjectTabs({
               Delete “{projectTitle}”?
             </h2>
             <p className="text-[16px] text-fg-muted">
-              Its script and category links are deleted for good. Its sources
-              stay in the source library.
+              Its script, category links and publishing and editing fields are
+              deleted for good. Its sources stay in the source library.
             </p>
           </div>
           <button

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Teleprompter: opened from the Script tab at the selected entry, it shows the script read-only in the "Broadcast" look and scrolls with Space to pause and resume (#43).
 - Teleprompter keys: ↑/↓ speed (levels 1–20), +/− text size (32–96 px), ←/→ previous and next entry, Home back to the top and ? for the key hints. Speed and size are remembered app-wide (#44).
 - Teleprompter fullscreen and wake lock: opening enters fullscreen, Esc there pauses, F goes back into fullscreen, and the screen stays awake while the teleprompter is open (#45).
+- Publishing and Editing tabs on the video project page, with editing notes on the Editing tab, saved as you type. The database gains the 0.3.0 project fields (title options, tags, thumbnail drafts, B-roll items), and every existing project gets its title as its first title option (#46).
 
 ## [0.1.0] - 2026-10-26
 

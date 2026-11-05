@@ -84,6 +84,13 @@ export const videoProject = sqliteTable("video_project", {
   // The idea's note and rating, kept when it became a project.
   originalNote: text("original_note"),
   originalRating: integer("original_rating"),
+  description: text("description").notNull().default(""),
+  editingNote: text("editing_note").notNull().default(""),
+  // At most one final draft, by construction. Cleared when it's deleted.
+  finalThumbnail: text("final_thumbnail").references(
+    (): AnySQLiteColumn => thumbnailDraft.id,
+    { onDelete: "set null" },
+  ),
   created: text("created").notNull(),
   updated: text("updated").notNull(),
 });
@@ -218,3 +225,86 @@ export const projectSource = sqliteTable(
     index("project_source_by_source").on(t.source),
   ],
 );
+
+/**
+ * A candidate title. The final one is the option whose text matches the
+ * project title, ignoring surrounding spaces; there's no flag for it.
+ */
+export const titleOption = sqliteTable(
+  "title_option",
+  {
+    id: text("id").primaryKey(),
+    videoProject: text("video_project")
+      .notNull()
+      .references(() => videoProject.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    position: integer("position").notNull(),
+    created: text("created").notNull(),
+  },
+  (t) => [index("title_option_project").on(t.videoProject)],
+);
+
+export type TitleOption = typeof titleOption.$inferSelect;
+
+/** A YouTube tag, kept as typed and unique per project ignoring case. */
+export const projectTag = sqliteTable(
+  "project_tag",
+  {
+    videoProject: text("video_project")
+      .notNull()
+      .references(() => videoProject.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    position: integer("position").notNull(),
+  },
+  (t) => [
+    uniqueIndex("project_tag_unique").on(t.videoProject, sql`lower(${t.text})`),
+  ],
+);
+
+export type ProjectTag = typeof projectTag.$inferSelect;
+
+/**
+ * A thumbnail draft image, stored as
+ * files/thumbnails/<project-id>/<draft-id>.<ext>.
+ */
+export const thumbnailDraft = sqliteTable(
+  "thumbnail_draft",
+  {
+    id: text("id").primaryKey(),
+    videoProject: text("video_project")
+      .notNull()
+      .references((): AnySQLiteColumn => videoProject.id, {
+        onDelete: "cascade",
+      }),
+    originalName: text("original_name").notNull(),
+    ext: text("ext").notNull(),
+    size: integer("size").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    note: text("note"),
+    uploaded: text("uploaded").notNull(),
+  },
+  (t) => [index("thumbnail_draft_project").on(t.videoProject)],
+);
+
+export type ThumbnailDraft = typeof thumbnailDraft.$inferSelect;
+
+/**
+ * An extra B-roll item, with no spot in the script. Script items are the
+ * stage directions themselves (ADR 0003).
+ */
+export const brollItem = sqliteTable(
+  "broll_item",
+  {
+    id: text("id").primaryKey(),
+    videoProject: text("video_project")
+      .notNull()
+      .references(() => videoProject.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    found: integer("found", { mode: "boolean" }).notNull().default(false),
+    created: text("created").notNull(),
+  },
+  (t) => [index("broll_item_project").on(t.videoProject)],
+);
+
+export type BrollItem = typeof brollItem.$inferSelect;
