@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getVideoProject } from "@/db";
+import { getVideoProject, listBrollItems, listSections } from "@/db";
+import { scriptBrollGroups } from "@/lib/broll";
+import { BrollList } from "./broll-list";
 import { EditingNote } from "./editing-note";
 
 /** The Editing tab: the editing notes, with the B-roll list beside them (F3). */
@@ -28,6 +30,17 @@ async function Editing({
         key={project.id}
         projectId={project.id}
         saved={project.editingNote}
+      />
+      <BrollList
+        projectId={project.id}
+        groups={scriptBrollGroups(await listSections(project.id))}
+        extras={(await listBrollItems(project.id)).map(
+          ({ id, text, found }) => ({
+            id,
+            text,
+            found,
+          }),
+        )}
       />
     </div>
   );

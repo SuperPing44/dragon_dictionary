@@ -28,7 +28,16 @@ export const StageDirectionNode = Node.create({
   selectable: true,
 
   addAttributes() {
-    return { description: { default: "" } };
+    return {
+      description: { default: "" },
+      // Ticked in the B-roll list (ADR 0003). Missing reads as not found;
+      // editing the description keeps it.
+      found: {
+        default: null,
+        parseHTML: (el) => (el.dataset.found === "true" ? true : null),
+        renderHTML: (attrs) => (attrs.found ? { "data-found": "true" } : {}),
+      },
+    };
   },
 
   parseHTML() {

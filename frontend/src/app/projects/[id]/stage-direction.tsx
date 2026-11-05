@@ -68,6 +68,7 @@ function StageDirectionChip({
   deleteNode,
 }: ReactNodeViewProps) {
   const description: string = node.attrs.description;
+  const found = node.attrs.found === true;
   const [editing, setEditing] = useState(description === "");
   const [draft, setDraft] = useState(description);
   const input = useRef<HTMLInputElement>(null);
@@ -156,6 +157,16 @@ function StageDirectionChip({
         >
           Image: {description}
         </button>
+      )}
+      {!editing && found && (
+        <span
+          role="img"
+          aria-label="found"
+          title="Found in the B-roll list"
+          className="text-[12px] text-amber/80"
+        >
+          ✓
+        </span>
       )}
     </NodeViewWrapper>
   );

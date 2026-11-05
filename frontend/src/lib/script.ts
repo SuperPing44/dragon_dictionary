@@ -1,9 +1,11 @@
-import { SECTION_KINDS, type SectionKind } from "@/db/schema";
+import { SECTION_KINDS, type Section, type SectionKind } from "@/db/schema";
+import { SECTION_KIND_LABELS } from "./labels";
 
 /** The subset of Tiptap JSON the script rules need. */
 export type DocNode = {
   type?: string;
   text?: string;
+  attrs?: Record<string, unknown>;
   content?: DocNode[];
 };
 
@@ -103,4 +105,20 @@ export function countDirections(doc: DocNode): number {
     (doc.type === "stageDirection" ? 1 : 0) +
     (doc.content ?? []).reduce((n, c) => n + countDirections(c), 0)
   );
+}
+
+type LabelledSection = Pick<Section, "id" | "kind" | "title" | "parent">;
+
+/**
+ * An entry's name in reading order: the section kind's label, or for a
+ * subsection "Main part · <title>".
+ */
+export function entryLabel(
+  s: LabelledSection,
+  byId: Map<string, LabelledSection>,
+): string {
+  const own = s.kind ? SECTION_KIND_LABELS[s.kind] : s.title || "Untitled";
+  const parent = s.parent ? byId.get(s.parent) : undefined;
+  if (!parent) return own;
+  return `${entryLabel(parent, byId)} · ${s.title || "Untitled"}`;
 }

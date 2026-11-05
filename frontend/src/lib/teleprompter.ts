@@ -1,6 +1,5 @@
 import type { Section } from "@/db/schema";
-import { SECTION_KIND_LABELS } from "./labels";
-import { type DocNode, hasContent, parseDoc } from "./script";
+import { type DocNode, entryLabel, hasContent, parseDoc } from "./script";
 
 /** Speed levels: level n scrolls 3n lines per minute. */
 export const MIN_SPEED_LEVEL = 1;
@@ -29,13 +28,6 @@ export type PromptSection = Pick<
 /** One entry the teleprompter shows: a section or subsection with text. */
 export type PromptEntry = { id: string; label: string; doc: DocNode };
 
-function labelOf(s: PromptSection, byId: Map<string, PromptSection>): string {
-  const own = s.kind ? SECTION_KIND_LABELS[s.kind] : s.title || "Untitled";
-  const parent = s.parent ? byId.get(s.parent) : undefined;
-  if (!parent) return own;
-  return `${labelOf(parent, byId)} · ${s.title || "Untitled"}`;
-}
-
 /**
  * The entries to show, in script order (top-level sections, each followed
  * by its subsections). Empty entries are skipped entirely.
@@ -44,7 +36,9 @@ export function prompterEntries(sections: PromptSection[]): PromptEntry[] {
   const byId = new Map(sections.map((s) => [s.id, s]));
   return sections.flatMap((s) => {
     const doc = parseDoc(s.content);
-    return hasContent(doc) ? [{ id: s.id, label: labelOf(s, byId), doc }] : [];
+    return hasContent(doc)
+      ? [{ id: s.id, label: entryLabel(s, byId), doc }]
+      : [];
   });
 }
 
