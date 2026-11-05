@@ -15,6 +15,7 @@ import * as quoteQueries from "./quotes";
 import type { Category, CategoryColour, SectionKind } from "./schema";
 import * as sectionQueries from "./sections";
 import * as sourceQueries from "./sources";
+import * as titleQueries from "./title-options";
 
 // Every query goes through here. better-sqlite3 is synchronous, so each read
 // awaits io() first; otherwise cacheComponents would prerender it.
@@ -178,6 +179,39 @@ export async function removeProjectCategory(
 export async function deleteVideoProject(id: string) {
   await io();
   projectQueries.deleteVideoProject(getDb(), id);
+}
+
+export async function listTitleOptions(projectId: string) {
+  await io();
+  return titleQueries.listTitleOptions(getDb(), projectId);
+}
+
+export async function addTitleOption(projectId: string, text: string) {
+  await io();
+  return titleQueries.addTitleOption(getDb(), projectId, text);
+}
+
+export async function editTitleOption(id: string, text: string) {
+  await io();
+  return titleQueries.editTitleOption(getDb(), id, text);
+}
+
+export async function deleteTitleOption(id: string) {
+  await io();
+  titleQueries.deleteTitleOption(getDb(), id);
+}
+
+export async function reorderTitleOptions(
+  projectId: string,
+  orderedIds: string[],
+) {
+  await io();
+  titleQueries.reorderTitleOptions(getDb(), projectId, orderedIds);
+}
+
+export async function markTitleOptionFinal(id: string) {
+  await io();
+  titleQueries.markTitleOptionFinal(getDb(), id);
 }
 
 export async function saveSectionContent(sectionId: string, content: string) {
@@ -409,6 +443,7 @@ export {
   type Source,
   type SourceFile,
   type SourceType,
+  type TitleOption,
   VIDEO_STAGES,
   type VideoProject,
   type VideoStage,
@@ -418,3 +453,4 @@ export {
   type SourceSort,
   type SourceWithProjects,
 } from "./sources";
+export type { TitleOptionRefusal, TitleOptionResult } from "./title-options";

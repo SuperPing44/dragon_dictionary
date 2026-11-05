@@ -34,7 +34,8 @@ export function ProjectHeader({
   return (
     <header className="flex items-center gap-4">
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-        <TitleField id={project.id} saved={project.title} />
+        {/* Keyed by the title, so marking an option final shows here. */}
+        <TitleField key={project.title} id={project.id} saved={project.title} />
         <div className="flex flex-wrap items-center gap-3">
           <CategoryPicker
             variant="inline"

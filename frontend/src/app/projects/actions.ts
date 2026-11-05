@@ -5,9 +5,15 @@ import { redirect } from "next/navigation";
 import type { CategoryPick } from "@/components/category-picker";
 import {
   addProjectCategory,
+  addTitleOption,
+  deleteTitleOption,
   deleteVideoProject,
+  editTitleOption,
   linkSource,
+  markTitleOptionFinal,
   removeProjectCategory,
+  reorderTitleOptions,
+  type TitleOptionRefusal,
   unlinkSource,
   updateVideoProject,
 } from "@/db";
@@ -45,5 +51,43 @@ export async function linkSourceAction(projectId: string, sourceId: string) {
 
 export async function unlinkSourceAction(projectId: string, sourceId: string) {
   await unlinkSource(projectId, sourceId);
+  refresh();
+}
+
+/** Adds a title option; returns why it was refused, if it was. */
+export async function addTitleOptionAction(
+  projectId: string,
+  text: string,
+): Promise<TitleOptionRefusal | undefined> {
+  const result = await addTitleOption(projectId, text);
+  if (result.ok) refresh();
+  return result.ok ? undefined : result.reason;
+}
+
+/** Edits a title option; returns why it was refused, if it was. */
+export async function editTitleOptionAction(
+  id: string,
+  text: string,
+): Promise<TitleOptionRefusal | undefined> {
+  const result = await editTitleOption(id, text);
+  if (result?.ok) refresh();
+  return result && !result.ok ? result.reason : undefined;
+}
+
+export async function deleteTitleOptionAction(id: string) {
+  await deleteTitleOption(id);
+  refresh();
+}
+
+export async function reorderTitleOptionsAction(
+  projectId: string,
+  orderedIds: string[],
+) {
+  await reorderTitleOptions(projectId, orderedIds);
+  refresh();
+}
+
+export async function markTitleOptionFinalAction(id: string) {
+  await markTitleOptionFinal(id);
   refresh();
 }
