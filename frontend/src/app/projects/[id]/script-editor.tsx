@@ -2,7 +2,7 @@
 
 import type { Editor, JSONContent } from "@tiptap/react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   startTransition,
   useEffect,
@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import type { Section, SectionKind } from "@/db/schema";
+import { directionPosition, scriptItemTarget } from "@/lib/broll";
 import { speakingTime, wordsLine } from "@/lib/format";
 import { SECTION_KIND_LABELS } from "@/lib/labels";
 import { enterFullscreen } from "@/lib/screen";
@@ -139,6 +140,36 @@ export function ScriptEditor({
       .reduce((n, x) => n + wordsOf(x), 0);
 
   const flush = (id: string) => flushSave(timers.current, pending.current, id);
+
+  // From the B-roll list (?entry=…&direction=…): open that entry, then
+  // scroll to the direction and make it glow briefly. If it's gone, the
+  // entry still opens, with no glow.
+  const searchParams = useSearchParams();
+  const [glow, setGlow] = useState<{ sectionId: string; index: number }>();
+  const handledLink = useRef(false);
+  useEffect(() => {
+    if (handledLink.current) return;
+    handledLink.current = true;
+    const target = scriptItemTarget(searchParams);
+    if (!target || !saved.some((s) => s.id === target.sectionId)) return;
+    setSelectedId(target.sectionId);
+    if (target.index !== undefined) {
+      setGlow({ sectionId: target.sectionId, index: target.index });
+    }
+    // Drop the parameters, so a reload doesn't jump again.
+    router.replace(`/projects/${projectId}`, { scroll: false });
+  }, [searchParams, saved, projectId, router]);
+
+  useEffect(() => {
+    if (!glow || !editor || selected?.id !== glow.sectionId) return;
+    setGlow(undefined);
+    const pos = directionPosition(editor.state.doc, glow.index);
+    const dom = pos === undefined ? null : editor.view.nodeDOM(pos);
+    if (!(dom instanceof HTMLElement)) return;
+    dom.scrollIntoView({ block: "center", behavior: "smooth" });
+    dom.classList.add("direction-glow");
+    setTimeout(() => dom.classList.remove("direction-glow"), 2000);
+  }, [glow, editor, selected?.id]);
 
   // Back from the teleprompter: select the entry that was being read.
   useEffect(() => {
