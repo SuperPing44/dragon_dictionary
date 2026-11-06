@@ -168,6 +168,11 @@ export async function updateVideoProject(
   return projectQueries.updateVideoProject(getDb(), id, changes);
 }
 
+export async function listArchive() {
+  await io();
+  return projectQueries.listArchive(getDb());
+}
+
 export async function publishVideoProject(
   id: string,
   fields: { youtubeLink: string; publishedOn: string },
@@ -551,6 +556,7 @@ export async function backUpNow() {
 export type SidebarCounts = {
   ideas: number;
   videoProjects: number;
+  archive: number;
   sources: number;
   categories: number;
 };
@@ -561,6 +567,7 @@ export async function sidebarCounts(): Promise<SidebarCounts> {
   return {
     ideas: ideaQueries.countIdeas(db),
     videoProjects: projectQueries.countVideoProjects(db),
+    archive: projectQueries.countArchive(db),
     sources: sourceQueries.countSources(db),
     categories: categoryQueries.countCategories(db),
   };

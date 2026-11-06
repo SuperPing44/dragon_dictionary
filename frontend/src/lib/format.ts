@@ -163,3 +163,23 @@ export function backupAge(iso: string, now = new Date()): string {
 export function filterCountLine(shown: number, total: number): string {
   return `${shown} of ${total} shown`;
 }
+
+/** A publish date (`2026-10-01`) as "1 Oct 2026", or "No date". */
+export function formatPublishDate(iso: string | null): string {
+  if (!iso) return "No date";
+  const [year, month, day] = iso.split("-").map(Number);
+  return `${day} ${MONTHS[month - 1]} ${year}`;
+}
+
+/** The archive header line, e.g. "9 published · newest first". */
+export function archiveCountLine(n: number): string {
+  return `${n} published · newest first`;
+}
+
+/** A link shown short: "youtu.be/abc" for "https://www.youtu.be/abc". */
+export function shortLink(url: string): string {
+  return url
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+    .replace(/\/$/, "");
+}
