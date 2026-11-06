@@ -54,3 +54,13 @@ export function publishPrefill(
     date: project.publishedOn ?? localIsoDate(now),
   };
 }
+
+/** The project page's back link: the Archive for a published project. */
+export function projectBackLink(stage: string): {
+  href: string;
+  label: string;
+} {
+  return stage === "published"
+    ? { href: "/archive", label: "← Archive" }
+    : { href: "/projects", label: "← Video projects" };
+}

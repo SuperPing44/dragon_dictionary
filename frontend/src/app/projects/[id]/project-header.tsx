@@ -17,6 +17,7 @@ import {
   saveProject,
 } from "../actions";
 import { PublishDialog } from "../publish-dialog";
+import { PublishedRow } from "./published-row";
 
 type ProjectHeaderProps = {
   project: VideoProjectWithCategories;
@@ -54,6 +55,13 @@ export function ProjectHeader({
             {`·   ${speakingTime(project.wordCount, rate)}  ·  ${wordsLine(project.wordCount)}`}
           </p>
         </div>
+        {project.stage === "published" && (
+          <PublishedRow
+            id={project.id}
+            youtubeLink={project.youtubeLink}
+            publishedOn={project.publishedOn}
+          />
+        )}
       </div>
       <StageStars
         stage={project.stage}

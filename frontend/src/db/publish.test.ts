@@ -4,6 +4,7 @@ import {
   checkYouTubeLink,
   isIsoDate,
   localIsoDate,
+  projectBackLink,
   publishPrefill,
 } from "@/lib/publish";
 import { type Db, migrateDb, openDb } from "./connection";
@@ -200,6 +201,53 @@ describe("publishing", () => {
     expect(publishPrefill(kept, new Date())).toEqual({
       link: "https://youtu.be/k",
       date: "2026-12-05",
+    });
+  });
+});
+
+describe("the published header", () => {
+  const published = () => {
+    const id = make("Krampus");
+    publishVideoProject(
+      db,
+      id,
+      { youtubeLink: "https://youtu.be/k", publishedOn: "2026-12-05" },
+      tick(),
+    );
+    return id;
+  };
+
+  it("edits the date, and can clear it to No date", () => {
+    const id = published();
+    updateVideoProject(db, id, { publishedOn: "2026-12-24" }, tick());
+    expect(getVideoProject(db, id)?.publishedOn).toBe("2026-12-24");
+    updateVideoProject(db, id, { publishedOn: null }, tick());
+    expect(getVideoProject(db, id)?.publishedOn).toBeNull();
+    expect(() =>
+      updateVideoProject(db, id, { publishedOn: "24.12.2026" }),
+    ).toThrow();
+  });
+
+  it("edits the link, and can clear it", () => {
+    const id = published();
+    updateVideoProject(db, id, { youtubeLink: "https://vimeo.com/1" }, tick());
+    expect(getVideoProject(db, id)?.youtubeLink).toBe("https://vimeo.com/1");
+    updateVideoProject(db, id, { youtubeLink: "  " }, tick());
+    expect(getVideoProject(db, id)?.youtubeLink).toBeNull();
+    expect(() =>
+      updateVideoProject(db, id, { youtubeLink: "not a link" }),
+    ).toThrow();
+    expect(getVideoProject(db, id)?.stage).toBe("published");
+  });
+
+  it("leads back to the Archive from a published project", () => {
+    expect(projectBackLink("published")).toEqual({
+      href: "/archive",
+      label: "← Archive",
+    });
+    expect(projectBackLink("upload")).toEqual({
+      href: "/projects",
+      label: "← Video projects",
     });
   });
 });
