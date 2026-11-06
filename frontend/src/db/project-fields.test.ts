@@ -15,7 +15,7 @@ import {
   titleOption,
   videoProject,
 } from "./schema";
-import { undoNewestMigration } from "./test-migrations";
+import { undoProjectFieldsMigration } from "./test-migrations";
 
 let db: Db;
 
@@ -32,7 +32,7 @@ const newProject = (title: string) => {
 
 describe("the 0.3.0 migration", () => {
   it("gives every existing project one title option, its title", () => {
-    undoNewestMigration(db);
+    undoProjectFieldsMigration(db);
     db.$client.exec(`
       insert into video_project (id, title, stage, created, updated) values
         ('p1', 'Ragnarök: how the world ends', 'script', '2026-09-01T10:00:00.000Z', '2026-09-02T10:00:00.000Z'),
@@ -70,7 +70,7 @@ describe("the 0.3.0 migration", () => {
   });
 
   it("starts the description and editing note empty, with no final thumbnail", () => {
-    undoNewestMigration(db);
+    undoProjectFieldsMigration(db);
     db.$client.exec(`
       insert into video_project (id, title, stage, created, updated)
         values ('p1', 'Fenrir', 'research', '2026-09-01', '2026-09-01');

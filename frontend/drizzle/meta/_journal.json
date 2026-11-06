@@ -64,6 +64,13 @@
       "when": 1793906685025,
       "tag": "0008_project_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1793948824919,
+      "tag": "0009_board_position",
+      "breakpoints": true
     }
   ]
 }
