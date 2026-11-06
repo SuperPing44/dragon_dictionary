@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises";
 import type { Readable } from "node:stream";
 import { io } from "next/cache";
 import { v7 as uuidv7 } from "uuid";
+import type { BoardMove } from "@/lib/board";
 import type { SourceValues } from "@/lib/sources";
 import * as backupQueries from "./backup";
 import * as brollQueries from "./broll";
@@ -141,6 +142,12 @@ export async function makeVideoProject(ideaId: string) {
 export async function listVideoProjects() {
   await io();
   return projectQueries.listVideoProjects(getDb());
+}
+
+/** Moves a card on the board: a stage change or a reorder (spec §5.3). */
+export async function moveOnBoard(move: BoardMove) {
+  await io();
+  projectQueries.moveOnBoard(getDb(), move);
 }
 
 export async function getVideoProject(id: string) {

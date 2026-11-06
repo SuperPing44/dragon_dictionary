@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { boardColumns } from "@/lib/board";
+import { applyBoardMove, boardColumns, reorderColumn } from "@/lib/board";
 import { type Db, migrateDb, openDb } from "./connection";
 import { createIdea } from "./ideas";
 import {
   countVideoProjects,
   listVideoProjects,
   makeVideoProject,
+  moveOnBoard,
   updateVideoProject,
 } from "./projects";
 import { undoNewestMigration } from "./test-migrations";
@@ -114,5 +115,102 @@ describe("the board", () => {
     expect(countVideoProjects(db)).toBe(2);
     updateVideoProject(db, loki, { stage: "published" }, tick());
     expect(countVideoProjects(db)).toBe(1);
+  });
+});
+
+describe("moving cards", () => {
+  const ids = () => {
+    const [a, b, c] = [make("A"), make("B"), make("C")];
+    return { a, b, c }; // Research reads C, B, A
+  };
+
+  it("into another column lands on top, wherever it was dropped", () => {
+    const { a, b, c } = ids();
+    moveOnBoard(db, { id: a, stage: "script", beforeId: null }, tick());
+    moveOnBoard(db, { id: c, stage: "script", beforeId: null }, tick());
+    expect(columns().script).toEqual(["C", "A"]);
+    expect(columns().research).toEqual(["B"]);
+    expect(b).toBeTruthy();
+  });
+
+  it("can go backward or skip columns, like the stars", () => {
+    const { a } = ids();
+    moveOnBoard(db, { id: a, stage: "upload", beforeId: null }, tick());
+    moveOnBoard(db, { id: a, stage: "research", beforeId: null }, tick());
+    expect(columns().research).toEqual(["A", "C", "B"]);
+    expect(columns().upload).toEqual([]);
+  });
+
+  it("renumbers both columns", () => {
+    const { a, b } = ids();
+    moveOnBoard(db, { id: b, stage: "script", beforeId: null }, tick());
+    const rows = db.$client
+      .prepare(
+        "select title, stage, board_position as p from video_project order by stage, p",
+      )
+      .all();
+    expect(rows).toEqual([
+      { title: "C", stage: "research", p: 0 },
+      { title: "A", stage: "research", p: 1 },
+      { title: "B", stage: "script", p: 0 },
+    ]);
+    expect(a).toBeTruthy();
+  });
+
+  it("within a column goes before the card it's dropped on, or to the end", () => {
+    const { a, b, c } = ids();
+    moveOnBoard(db, { id: a, stage: "research", beforeId: c }, tick());
+    expect(columns().research).toEqual(["A", "C", "B"]);
+    moveOnBoard(db, { id: a, stage: "research", beforeId: null }, tick());
+    expect(columns().research).toEqual(["C", "B", "A"]);
+    moveOnBoard(db, { id: c, stage: "research", beforeId: a }, tick());
+    expect(columns().research).toEqual(["B", "C", "A"]);
+    expect(b).toBeTruthy();
+  });
+
+  it("refuses Published, which isn't a board column", () => {
+    const { a } = ids();
+    expect(() =>
+      moveOnBoard(db, { id: a, stage: "published" as never, beforeId: null }),
+    ).toThrow();
+  });
+});
+
+describe("applyBoardMove (shown at once)", () => {
+  const cards = [
+    { id: "c", stage: "research" as const },
+    { id: "b", stage: "research" as const },
+    { id: "a", stage: "research" as const },
+    { id: "x", stage: "script" as const },
+  ];
+  const order = (list: { id: string; stage: string }[]) =>
+    list.map((p) => `${p.stage}:${p.id}`);
+
+  it("matches the server: on top of a new column, before a card within one", () => {
+    expect(
+      order(applyBoardMove(cards, { id: "a", stage: "script", beforeId: "x" })),
+    ).toEqual(["script:a", "research:c", "research:b", "script:x"]);
+    expect(
+      order(
+        applyBoardMove(cards, { id: "a", stage: "research", beforeId: "c" }),
+      ),
+    ).toEqual(["research:a", "research:c", "research:b", "script:x"]);
+  });
+
+  it("puts the card at the end of its column for a null target", () => {
+    expect(
+      order(
+        applyBoardMove(cards, { id: "c", stage: "research", beforeId: null }),
+      ),
+    ).toEqual(["research:b", "research:a", "research:c", "script:x"]);
+  });
+
+  it("reorders a column, keeping the rest", () => {
+    expect(reorderColumn(["a", "b", "c"], "c", "a")).toEqual(["c", "a", "b"]);
+    expect(reorderColumn(["a", "b", "c"], "a", "gone")).toEqual([
+      "b",
+      "c",
+      "a",
+    ]);
   });
 });

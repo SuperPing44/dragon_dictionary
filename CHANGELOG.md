@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Video projects is now a Kanban board: one column per stage from Research to Upload, in manual order, with cards showing the final thumbnail, title, category dots, length and source count. Published projects leave the board, and the sidebar count covers the board only. New projects and stage changes land on top of their column (#55).
+- Kanban board: drag a card to another column to change its stage (it lands on top), or within a column to reorder it. The target column is highlighted while dragging (#56).
 
 ## [0.3.0] - 2026-11-05
 

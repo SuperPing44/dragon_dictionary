@@ -1,0 +1,236 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { startTransition, useOptimistic, useState } from "react";
+import { categoryColour } from "@/components/category-chip";
+import type { VideoProjectWithCategories } from "@/db/projects";
+import {
+  applyBoardMove,
+  type BoardMove,
+  type BoardStage,
+  boardColumns,
+} from "@/lib/board";
+import { speakingTime } from "@/lib/format";
+import { STAGE_LABELS } from "@/lib/labels";
+import { moveCardAction } from "./actions";
+
+type BoardViewProps = {
+  projects: VideoProjectWithCategories[];
+  /** Words per minute for the estimated length. */
+  rate: number;
+};
+
+/** Where a dragged card would go: a column, and a card to go before. */
+type DropTarget = { stage: BoardStage; beforeId: string | null };
+
+/**
+ * The board's columns (spec §5.3, Figma K1–K2). Cards are dragged between
+ * columns to change the stage, landing on top, or within a column to
+ * reorder it. Moves show at once and save immediately.
+ */
+export function BoardView({ projects, rate }: BoardViewProps) {
+  const [shown, move] = useOptimistic(
+    projects,
+    (current: VideoProjectWithCategories[], m: BoardMove) =>
+      applyBoardMove(current, m),
+  );
+  const [dragging, setDragging] = useState<VideoProjectWithCategories | null>(
+    null,
+  );
+  const [over, setOver] = useState<DropTarget | null>(null);
+
+  function drop(target: DropTarget) {
+    const card = dragging;
+    setDragging(null);
+    setOver(null);
+    if (!card) return;
+    const m: BoardMove = { id: card.id, ...target };
+    if (card.stage === target.stage && target.beforeId === card.id) return;
+    startTransition(async () => {
+      move(m);
+      await moveCardAction(m);
+    });
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 gap-3">
+      {boardColumns(shown).map((column) => {
+        const isTarget = dragging !== null && over?.stage === column.stage;
+        const arriving = isTarget && dragging.stage !== column.stage;
+        const label = STAGE_LABELS[column.stage];
+        return (
+          <section
+            key={column.stage}
+            aria-label={label}
+            onDragOver={(e) => {
+              if (!dragging) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              // Over the column's empty space: the end of the column.
+              if (
+                over?.stage !== column.stage ||
+                e.target === e.currentTarget
+              ) {
+                setOver({ stage: column.stage, beforeId: null });
+              }
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setOver((o) => (o?.stage === column.stage ? null : o));
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (over?.stage === column.stage) drop(over);
+            }}
+            className={`flex min-w-0 flex-1 flex-col gap-2.5 rounded-[18px] border p-2.5 transition-colors ${
+              isTarget
+                ? "border-accent bg-accent/5 shadow-[0_0_16px_rgb(157_107_255/0.25)]"
+                : "border-border-soft bg-surface-1"
+            }`}
+          >
+            <h2 className="flex items-baseline gap-2 px-1.5 pt-1">
+              <span className="font-label font-semibold text-[11px] text-fg-muted uppercase tracking-[1.1px]">
+                {label}
+              </span>
+              <span className="font-label text-[12px] text-fg-faint tabular-nums">
+                {column.cards.length}
+              </span>
+            </h2>
+
+            {arriving && (
+              <div className="flex flex-col gap-1.5">
+                <div className="h-0.5 rounded-full bg-accent shadow-[0_0_8px_rgb(157_107_255/0.7)]" />
+                <p className="px-1 text-center font-label text-[11px] text-accent-glow">
+                  Drop anywhere — it lands on top
+                </p>
+              </div>
+            )}
+
+            {column.cards.length === 0 ? (
+              <p className="pointer-events-none rounded-xl border border-border-strong border-dashed px-3 py-6 text-center text-[14px] text-fg-faint italic">
+                Nothing in {label}
+              </p>
+            ) : (
+              <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+                {column.cards.map((project) => {
+                  const insertBefore =
+                    isTarget &&
+                    !arriving &&
+                    over?.beforeId === project.id &&
+                    dragging.id !== project.id;
+                  return (
+                    <li
+                      key={project.id}
+                      onDragOver={(e) => {
+                        if (!dragging) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setOver({ stage: column.stage, beforeId: project.id });
+                      }}
+                      className="flex flex-col gap-2"
+                    >
+                      {insertBefore && <InsertLine />}
+                      <BoardCard
+                        project={project}
+                        rate={rate}
+                        isDragging={dragging?.id === project.id}
+                        onDragStart={() => setDragging(project)}
+                        onDragEnd={() => {
+                          setDragging(null);
+                          setOver(null);
+                        }}
+                      />
+                    </li>
+                  );
+                })}
+                {isTarget && !arriving && over?.beforeId === null && (
+                  <li aria-hidden>
+                    <InsertLine />
+                  </li>
+                )}
+              </ul>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function InsertLine() {
+  return (
+    <div className="h-0.5 rounded-full bg-accent shadow-[0_0_8px_rgb(157_107_255/0.7)]" />
+  );
+}
+
+type BoardCardProps = {
+  project: VideoProjectWithCategories;
+  rate: number;
+  isDragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+};
+
+/** A Board card: final thumbnail if any, title, category dots, length. */
+function BoardCard({
+  project,
+  rate,
+  isDragging,
+  onDragStart,
+  onDragEnd,
+}: BoardCardProps) {
+  const sources = `${project.sourceCount} ${project.sourceCount === 1 ? "source" : "sources"}`;
+  return (
+    <Link
+      href={`/projects/${project.id}`}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", project.id);
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+      className={`flex cursor-grab flex-col gap-2 rounded-xl border border-border-soft bg-surface-2 p-2.5 transition-colors hover:border-border-strong hover:bg-surface-3 active:cursor-grabbing ${
+        isDragging ? "opacity-40" : ""
+      }`}
+    >
+      {project.finalThumbnail && (
+        <div className="relative aspect-video overflow-hidden rounded-lg bg-canvas">
+          <Image
+            src={`/api/thumbnails/${project.finalThumbnail}`}
+            alt=""
+            fill
+            unoptimized
+            draggable={false}
+            sizes="240px"
+            className="object-contain"
+          />
+        </div>
+      )}
+      <p className="line-clamp-3 font-heading font-semibold text-[15px] text-fg leading-snug">
+        {project.title}
+      </p>
+      {project.categories.length > 0 && (
+        <ul
+          aria-label="Categories"
+          className="flex flex-wrap items-center gap-1.5"
+        >
+          {project.categories.map((c) => (
+            <li
+              key={c.id}
+              title={c.name}
+              aria-label={c.name}
+              className="size-2.5 rounded-full"
+              style={{ backgroundColor: categoryColour(c.colour) }}
+            />
+          ))}
+        </ul>
+      )}
+      <p className="font-label text-[12px] text-fg-muted">
+        {speakingTime(project.wordCount, rate)} · {sources}
+      </p>
+    </Link>
+  );
+}
