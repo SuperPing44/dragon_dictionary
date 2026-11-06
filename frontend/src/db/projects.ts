@@ -1,5 +1,11 @@
 import { and, asc, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
+import {
+  BOARD_STAGES,
+  type BoardMove,
+  type BoardStage,
+  reorderColumn,
+} from "@/lib/board";
 import type { Db } from "./connection";
 import { sourceCountsByProject } from "./project-sources";
 import {
@@ -141,6 +147,56 @@ export function placeOnTop(db: Conn, projectId: string, stage: VideoStage) {
       .set({ boardPosition })
       .where(eq(videoProject.id, id))
       .run();
+  });
+}
+
+/** A stage's column ids in board order. */
+function columnIds(db: Conn, stage: VideoStage): string[] {
+  return db
+    .select({ id: videoProject.id })
+    .from(videoProject)
+    .where(eq(videoProject.stage, stage))
+    .orderBy(asc(videoProject.boardPosition), desc(videoProject.updated))
+    .all()
+    .map((p) => p.id);
+}
+
+function renumber(db: Conn, ids: string[]) {
+  ids.forEach((id, boardPosition) => {
+    db.update(videoProject)
+      .set({ boardPosition })
+      .where(eq(videoProject.id, id))
+      .run();
+  });
+}
+
+/**
+ * Moves a card on the board (spec §5.3). Into another stage it's a stage
+ * change like the stars make, landing on top; within its column it goes
+ * before `beforeId` (or to the end). Both affected columns are renumbered.
+ */
+export function moveOnBoard(
+  db: Db,
+  { id, stage, beforeId }: BoardMove,
+  now = new Date(),
+): void {
+  const project = db
+    .select({ stage: videoProject.stage })
+    .from(videoProject)
+    .where(eq(videoProject.id, id))
+    .get();
+  if (!project) return;
+  if (!BOARD_STAGES.includes(stage as BoardStage)) {
+    throw new Error(`Not a board column: ${stage}`);
+  }
+  if (project.stage !== stage) {
+    // Lands on top of the new column via the stage change.
+    updateVideoProject(db, id, { stage }, now);
+    renumber(db, columnIds(db, project.stage));
+    return;
+  }
+  db.transaction((tx) => {
+    renumber(tx, reorderColumn(columnIds(tx, stage), id, beforeId));
   });
 }
 

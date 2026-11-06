@@ -16,6 +16,7 @@ import {
   linkSource,
   markThumbnailFinal,
   markTitleOptionFinal,
+  moveOnBoard,
   removeProjectCategory,
   removeProjectTag,
   removeThumbnailDraft,
@@ -28,6 +29,7 @@ import {
   updateVideoProject,
 } from "@/db";
 import type { VideoProjectChanges } from "@/db/projects";
+import type { BoardMove } from "@/lib/board";
 
 export async function saveProject(id: string, changes: VideoProjectChanges) {
   await updateVideoProject(id, changes);
@@ -157,5 +159,10 @@ export async function setBrollItemFoundAction(id: string, found: boolean) {
 
 export async function deleteBrollItemAction(id: string) {
   await deleteBrollItem(id);
+  refresh();
+}
+
+export async function moveCardAction(move: BoardMove) {
+  await moveOnBoard(move);
   refresh();
 }
