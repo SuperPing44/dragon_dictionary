@@ -93,6 +93,10 @@ export const videoProject = sqliteTable("video_project", {
     (): AnySQLiteColumn => thumbnailDraft.id,
     { onDelete: "set null" },
   ),
+  // Set when publishing; kept when the project leaves Published.
+  youtubeLink: text("youtube_link"),
+  // A full ISO date, e.g. 2026-10-14.
+  publishedOn: text("published_on"),
   created: text("created").notNull(),
   updated: text("updated").notNull(),
 });

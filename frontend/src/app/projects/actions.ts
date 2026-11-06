@@ -17,6 +17,7 @@ import {
   markThumbnailFinal,
   markTitleOptionFinal,
   moveOnBoard,
+  publishVideoProject,
   removeProjectCategory,
   removeProjectTag,
   removeThumbnailDraft,
@@ -33,6 +34,14 @@ import type { BoardMove } from "@/lib/board";
 
 export async function saveProject(id: string, changes: VideoProjectChanges) {
   await updateVideoProject(id, changes);
+  refresh();
+}
+
+export async function publishProjectAction(
+  id: string,
+  fields: { youtubeLink: string; publishedOn: string },
+) {
+  await publishVideoProject(id, fields);
   refresh();
 }
 

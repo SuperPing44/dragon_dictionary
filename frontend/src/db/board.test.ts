@@ -14,7 +14,7 @@ import {
   moveOnBoard,
   updateVideoProject,
 } from "./projects";
-import { undoNewestMigration } from "./test-migrations";
+import { undoBoardMigration } from "./test-migrations";
 
 let db: Db;
 let clock: number;
@@ -40,7 +40,7 @@ const columns = () =>
 
 describe("the 0.4.0 migration", () => {
   it("numbers each stage by updated, newest on top", () => {
-    undoNewestMigration(db);
+    undoBoardMigration(db);
     db.$client.exec(`
       insert into video_project (id, title, stage, created, updated) values
         ('a', 'Old research', 'research', '2026-01-01', '2026-01-02'),

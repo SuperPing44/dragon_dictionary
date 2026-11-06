@@ -199,12 +199,12 @@ describe("initDb", () => {
         readonly: true,
       },
     );
-    // The snapshot is from before the migration: no board_position yet.
+    // The snapshot is from before the migration: no youtube_link yet.
     const migrated = (d: Database.Database) =>
       Boolean(
         d
           .prepare(
-            "select 1 from pragma_table_info('video_project') where name = 'board_position'",
+            "select 1 from pragma_table_info('video_project') where name = 'youtube_link'",
           )
           .get(),
       );

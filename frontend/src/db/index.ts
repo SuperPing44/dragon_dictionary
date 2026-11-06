@@ -168,6 +168,14 @@ export async function updateVideoProject(
   return projectQueries.updateVideoProject(getDb(), id, changes);
 }
 
+export async function publishVideoProject(
+  id: string,
+  fields: { youtubeLink: string; publishedOn: string },
+) {
+  await io();
+  return projectQueries.publishVideoProject(getDb(), id, fields);
+}
+
 export async function addProjectCategory(
   projectId: string,
   pick: CategoryPick,
