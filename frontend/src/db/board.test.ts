@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { applyBoardMove, boardColumns, reorderColumn } from "@/lib/board";
+import {
+  applyBoardMove,
+  boardColumns,
+  placeAmongVisible,
+  reorderColumn,
+} from "@/lib/board";
 import { type Db, migrateDb, openDb } from "./connection";
 import { createIdea } from "./ideas";
 import {
@@ -166,6 +171,35 @@ describe("moving cards", () => {
     moveOnBoard(db, { id: c, stage: "research", beforeId: a }, tick());
     expect(columns().research).toEqual(["B", "C", "A"]);
     expect(b).toBeTruthy();
+  });
+
+  it("while filtered, places the card relative to the visible cards", () => {
+    const [a, , c, d] = [make("A"), make("h"), make("C"), make("D")];
+    // Research reads D, C, h, A; the filter hides h.
+    const column = () => columns().research;
+    const visible = [d, c, a];
+    const ids = listVideoProjects(db).map((p) => p.id);
+    // D dropped at the end of the visible cards: after A, the last one.
+    moveOnBoard(
+      db,
+      {
+        id: d,
+        stage: "research",
+        beforeId: placeAmongVisible(ids, visible, d, null),
+      },
+      tick(),
+    );
+    expect(column()).toEqual(["C", "h", "A", "D"]);
+  });
+
+  it("while filtered, a drop at the end stays ahead of hidden cards below", () => {
+    const [h, a, b] = [make("h"), make("A"), make("B")];
+    // Research reads B, A, h; the filter hides h.
+    const ids = listVideoProjects(db).map((p) => p.id);
+    const beforeId = placeAmongVisible(ids, [b, a], b, null);
+    expect(beforeId).toBe(h);
+    moveOnBoard(db, { id: b, stage: "research", beforeId }, tick());
+    expect(columns().research).toEqual(["A", "B", "h"]);
   });
 
   it("refuses Published, which isn't a board column", () => {
