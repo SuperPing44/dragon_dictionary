@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import type { Db } from "./connection";
 import { sourceCountsByProject } from "./project-sources";
@@ -94,6 +94,7 @@ export function makeVideoProject(
       )
       .run();
     seedTitleOption(tx, project.id, project.title, now);
+    placeOnTop(tx, project.id, "research");
     tx.delete(idea).where(eq(idea.id, ideaId)).run();
     return project;
   });
@@ -120,12 +121,39 @@ function categoriesByProject(
   return result;
 }
 
-/** All video projects, most recently updated first, with their categories. */
+type Conn = Pick<Db, "select" | "update">;
+
+/**
+ * Puts a project on top of its stage's board column and renumbers that
+ * column (spec §3, Board order). Called whenever a project arrives in a
+ * stage: made from an idea, or moved with the stars.
+ */
+export function placeOnTop(db: Conn, projectId: string, stage: VideoStage) {
+  const others = db
+    .select({ id: videoProject.id })
+    .from(videoProject)
+    .where(and(eq(videoProject.stage, stage), ne(videoProject.id, projectId)))
+    .orderBy(asc(videoProject.boardPosition), desc(videoProject.updated))
+    .all()
+    .map((p) => p.id);
+  [projectId, ...others].forEach((id, boardPosition) => {
+    db.update(videoProject)
+      .set({ boardPosition })
+      .where(eq(videoProject.id, id))
+      .run();
+  });
+}
+
+/**
+ * The projects on the board (every stage but Published), with their
+ * categories, in board order within each stage.
+ */
 export function listVideoProjects(db: Db): VideoProjectWithCategories[] {
   const projects = db
     .select()
     .from(videoProject)
-    .orderBy(desc(videoProject.updated), desc(videoProject.created))
+    .where(ne(videoProject.stage, "published"))
+    .orderBy(asc(videoProject.boardPosition), desc(videoProject.updated))
     .all();
   const ids = projects.map((p) => p.id);
   const byProject = categoriesByProject(db, ids);
@@ -204,13 +232,17 @@ export function updateVideoProject(
   if (changes.description !== undefined)
     values.description = changes.description;
   return db.transaction((tx) => {
-    if (values.title !== undefined) {
-      const old = tx
-        .select({ title: videoProject.title })
-        .from(videoProject)
-        .where(eq(videoProject.id, id))
-        .get();
-      if (old) syncTitleOptionsOnRename(tx, id, old.title, values.title);
+    const old = tx
+      .select({ title: videoProject.title, stage: videoProject.stage })
+      .from(videoProject)
+      .where(eq(videoProject.id, id))
+      .get();
+    if (old && values.title !== undefined) {
+      syncTitleOptionsOnRename(tx, id, old.title, values.title);
+    }
+    // A project that arrives in another stage lands on top of its column.
+    if (old && values.stage !== undefined && values.stage !== old.stage) {
+      placeOnTop(tx, id, values.stage);
     }
     return tx
       .update(videoProject)
@@ -270,6 +302,13 @@ export function deleteVideoProject(db: Db, id: string): void {
   db.delete(videoProject).where(eq(videoProject.id, id)).run();
 }
 
+/** Projects on the board, i.e. not published (the sidebar count). */
 export function countVideoProjects(db: Db): number {
-  return db.select({ n: count() }).from(videoProject).get()?.n ?? 0;
+  return (
+    db
+      .select({ n: count() })
+      .from(videoProject)
+      .where(ne(videoProject.stage, "published"))
+      .get()?.n ?? 0
+  );
 }

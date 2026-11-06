@@ -199,14 +199,17 @@ describe("initDb", () => {
         readonly: true,
       },
     );
-    const hasTable = (d: Database.Database) =>
+    // The snapshot is from before the migration: no board_position yet.
+    const migrated = (d: Database.Database) =>
       Boolean(
         d
-          .prepare("select 1 from sqlite_master where name = 'title_option'")
+          .prepare(
+            "select 1 from pragma_table_info('video_project') where name = 'board_position'",
+          )
           .get(),
       );
-    expect(hasTable(snapshot)).toBe(false);
+    expect(migrated(snapshot)).toBe(false);
     snapshot.close();
-    expect(hasTable(db.$client)).toBe(true);
+    expect(migrated(db.$client)).toBe(true);
   });
 });

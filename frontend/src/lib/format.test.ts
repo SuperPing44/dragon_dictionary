@@ -2,12 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   backupAge,
   backupWhen,
-  editedLine,
+  boardCountLine,
   formatBytes,
   formatDay,
   ideaCountLine,
   numberInWords,
-  projectCountLine,
   speakingTime,
   usageLine,
   usageSentence,
@@ -70,39 +69,13 @@ describe("usageLine", () => {
   });
 });
 
-describe("editedLine", () => {
-  const now = new Date(2026, 9, 25, 15, 0);
-  const at = (d: Date) => d.toISOString();
-
-  it("says created for an untouched project", () => {
-    const t = at(new Date(2026, 9, 25, 9, 0));
-    expect(editedLine(t, t, now)).toBe("created today");
-    const y = at(new Date(2026, 9, 24, 23, 0));
-    expect(editedLine(y, y, now)).toBe("created yesterday");
-  });
-
-  it.each([
-    [new Date(2026, 9, 25, 14, 59, 40), "edited just now"],
-    [new Date(2026, 9, 25, 14, 59), "edited 1 minute ago"],
-    [new Date(2026, 9, 25, 14, 15), "edited 45 minutes ago"],
-    [new Date(2026, 9, 25, 13, 0), "edited 2 hours ago"],
-    [new Date(2026, 9, 24, 22, 0), "edited yesterday"],
-    [new Date(2026, 9, 21, 12, 0), "edited 4 days ago"],
-    [new Date(2026, 9, 4, 12, 0), "edited 3 weeks ago"],
-    [new Date(2026, 6, 4, 12, 0), "edited on 04 Jul 2026"],
-  ])("%s → %s", (updated, line) => {
-    expect(editedLine(at(new Date(2026, 0, 1)), at(updated), now)).toBe(line);
-  });
-});
-
-describe("projectCountLine", () => {
-  it("handles none, one and many", () => {
-    expect(projectCountLine(0)).toBe("No tales in the making yet");
-    expect(projectCountLine(1)).toBe(
-      "One tale in the making — most recently touched first",
+describe("boardCountLine", () => {
+  it("counts the projects in production", () => {
+    expect(boardCountLine(0)).toBe(
+      "0 in production · new projects come from the idea list",
     );
-    expect(projectCountLine(5)).toBe(
-      "Five tales in the making — most recently touched first",
+    expect(boardCountLine(10)).toBe(
+      "10 in production · new projects come from the idea list",
     );
   });
 });

@@ -86,6 +86,8 @@ export const videoProject = sqliteTable("video_project", {
   originalRating: integer("original_rating"),
   description: text("description").notNull().default(""),
   editingNote: text("editing_note").notNull().default(""),
+  // Manual order within the stage's board column, 0 on top.
+  boardPosition: integer("board_position").notNull().default(0),
   // At most one final draft, by construction. Cleared when it's deleted.
   finalThumbnail: text("final_thumbnail").references(
     (): AnySQLiteColumn => thumbnailDraft.id,

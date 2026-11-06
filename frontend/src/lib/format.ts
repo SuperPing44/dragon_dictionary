@@ -103,38 +103,9 @@ function calendarDaysBetween(earlier: Date, later: Date): number {
   return Math.round((end.getTime() - start.getTime()) / DAY_MS);
 }
 
-function daysAgo(date: Date, now: Date): string {
-  const days = calendarDaysBetween(date, now);
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 7) return `${days} days ago`;
-  if (days < 35) return `${plural(Math.floor(days / 7), "week")} ago`;
-  return `on ${formatDay(date.toISOString(), now)}`;
-}
-
-/** "created today" for an untouched project, else "edited 2 hours ago". */
-export function editedLine(
-  created: string,
-  updated: string,
-  now = new Date(),
-): string {
-  if (created === updated) return `created ${daysAgo(new Date(created), now)}`;
-  const date = new Date(updated);
-  const minutes = Math.floor((now.getTime() - date.getTime()) / 60_000);
-  if (minutes < 1) return "edited just now";
-  if (minutes < 60) return `edited ${plural(minutes, "minute")} ago`;
-  if (calendarDaysBetween(date, now) === 0) {
-    return `edited ${plural(Math.floor(minutes / 60), "hour")} ago`;
-  }
-  return `edited ${daysAgo(date, now)}`;
-}
-
-/** The video projects subtitle, e.g. "Five tales in the making". */
-export function projectCountLine(n: number): string {
-  if (n === 0) return "No tales in the making yet";
-  const words = numberInWords(n);
-  const capitalised = words.charAt(0).toUpperCase() + words.slice(1);
-  return `${capitalised} ${n === 1 ? "tale" : "tales"} in the making — most recently touched first`;
+/** The board's header line: "3 in production · new projects come from the idea list". */
+export function boardCountLine(n: number): string {
+  return `${n} in production · new projects come from the idea list`;
 }
 
 /**
