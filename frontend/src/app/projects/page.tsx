@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/page-header";
-import { getSpeakingRate, listVideoProjects } from "@/db";
+import { getSpeakingRate, listCategories, listVideoProjects } from "@/db";
 import { boardCountLine } from "@/lib/format";
 import { BoardView } from "./board-view";
 
@@ -20,15 +20,21 @@ export default function ProjectsPage() {
 async function Board() {
   const projects = await listVideoProjects();
   const rate = await getSpeakingRate();
-  return (
-    <>
-      <PageHeader title={TITLE} subtitle={boardCountLine(projects.length)} />
-      {projects.length === 0 ? (
+  if (projects.length === 0) {
+    return (
+      <>
+        <PageHeader title={TITLE} subtitle={boardCountLine(0)} />
         <IdeaListHint />
-      ) : (
-        <BoardView projects={projects} rate={rate} />
-      )}
-    </>
+      </>
+    );
+  }
+  return (
+    <BoardView
+      title={TITLE}
+      projects={projects}
+      categories={await listCategories()}
+      rate={rate}
+    />
   );
 }
 

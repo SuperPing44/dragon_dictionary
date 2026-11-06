@@ -68,3 +68,50 @@ export function applyBoardMove<T extends { id: string; stage: VideoStage }>(
   const others = projects.filter((p) => p.stage !== stage);
   return [...order.map((x) => byId.get(x) as T), ...others];
 }
+
+/** The board's filter (spec §5.3): a title search and picked categories. */
+export type BoardFilter = { query: string; cats: string[] };
+
+export const NO_FILTER: BoardFilter = { query: "", cats: [] };
+
+/** Lower case, without accents, so "ragnarok" finds "Ragnarök". */
+const fold = (s: string) =>
+  s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+
+export function isFiltering({ query, cats }: BoardFilter): boolean {
+  return query.trim() !== "" || cats.length > 0;
+}
+
+/**
+ * A card shows if its title contains the search and, with categories
+ * picked, it has any of them.
+ */
+export function matchesBoardFilter(
+  project: { title: string; categories: { id: string }[] },
+  { query, cats }: BoardFilter,
+): boolean {
+  const q = fold(query.trim());
+  if (q && !fold(project.title).includes(q)) return false;
+  return (
+    cats.length === 0 || project.categories.some((c) => cats.includes(c.id))
+  );
+}
+
+/**
+ * Where a card dropped among the visible cards goes in the whole column.
+ * Before a visible card it goes right before it; at the end of the visible
+ * cards it goes right after the last one, ahead of any hidden cards
+ * that follow it.
+ */
+export function placeAmongVisible(
+  columnIds: string[],
+  visibleIds: string[],
+  id: string,
+  beforeId: string | null,
+): string | null {
+  if (beforeId !== null) return beforeId;
+  const rest = columnIds.filter((x) => x !== id);
+  const shown = new Set(visibleIds);
+  const last = rest.findLastIndex((x) => shown.has(x));
+  return last < 0 ? null : (rest[last + 1] ?? null);
+}

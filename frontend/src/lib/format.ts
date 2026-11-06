@@ -158,3 +158,8 @@ export function backupAge(iso: string, now = new Date()): string {
   if (hours < 24) return `${plural(hours, "hour")} ago`;
   return `${plural(Math.floor(hours / 24), "day")} ago`;
 }
+
+/** The board header while filtering, before "· Clear filters" (Figma K3). */
+export function filterCountLine(shown: number, total: number): string {
+  return `${shown} of ${total} shown`;
+}
