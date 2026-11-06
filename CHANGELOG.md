@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-07
+
+The Archive, as specified in [`docs/spec/v2.md`](docs/spec/v2.md) §5.4. Its migration runs at startup, with a backup taken first.
+
+### Added
+
+- Publishing: the seventh stage star opens a publish dialog with an optional YouTube link (an http(s) URL; a non-YouTube link gets a hint) and the publish date, prefilled with today or the kept date. Cancel leaves the project where it was. The link and date are kept when a project goes back to the board. The 0.5.0 migration adds both fields (#58).
+- Archive screen: published projects, newest publish date first (no date last), each row with its final thumbnail or the dimmed dragon emblem, categories, publish date, length, and the YouTube link or an amber "Add link". The sidebar has an Archive entry with a count (#59).
+- Archive filters: a title search, a category filter (any picked category, as on the board) and a year filter offering only years with published videos. The header reads "n of m shown · Clear filters" while filtering, and all filters reset when you leave the Archive (#60).
+- Published projects: a Published row in the project header shows the publish date and YouTube link, both editable (the link can be cleared), plus "Open on YouTube ↗". The back link reads "← Archive" for a published project (#61).
+- Kanban board: while a card is dragged, a gold Publish → Archive zone appears at the right edge. Dropping a card there opens the publish dialog; Cancel leaves the card where it was. A stage change now also renumbers the column the project left (#62).
+
+## [0.4.0] - 2026-11-07
+
+The Kanban board, as specified in [`docs/spec/v2.md`](docs/spec/v2.md) §5.3. Its migration runs at startup, with a backup taken first.
+
+### Changed
+
+- Video projects is now a Kanban board: one column per stage from Research to Upload, in manual order, with cards showing the final thumbnail, title, category dots, length and source count. Published projects leave the board, and the sidebar count covers the board only. New projects and stage changes land on top of their column (#55).
+- Kanban board: drag a card to another column to change its stage (it lands on top), or within a column to reorder it. The target column is highlighted while dragging (#56).
+- Kanban board: search titles and filter by categories. Non-matching cards are hidden, the counts show matches, and the header reads "n of m shown · Clear filters". The filter resets when you leave the board (#57).
+
 ## [0.3.0] - 2026-11-05
 
 Video project fields, as specified in [`docs/spec/v2.md`](docs/spec/v2.md) §5.2. Its migration runs at startup, with a backup taken first.
@@ -50,7 +72,9 @@ MVP v1, as specified in [`docs/spec/mvp-v1.md`](docs/spec/mvp-v1.md).
 - Automatic backups to OneDrive: on start, before migrations and on demand, with the status shown in the sidebar.
 - Daily copy started from a desktop shortcut, plus an update script.
 
-[Unreleased]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/SuperPing44/dragon_dictionary/releases/tag/v0.1.0

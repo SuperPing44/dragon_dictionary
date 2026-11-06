@@ -86,11 +86,17 @@ export const videoProject = sqliteTable("video_project", {
   originalRating: integer("original_rating"),
   description: text("description").notNull().default(""),
   editingNote: text("editing_note").notNull().default(""),
+  // Manual order within the stage's board column, 0 on top.
+  boardPosition: integer("board_position").notNull().default(0),
   // At most one final draft, by construction. Cleared when it's deleted.
   finalThumbnail: text("final_thumbnail").references(
     (): AnySQLiteColumn => thumbnailDraft.id,
     { onDelete: "set null" },
   ),
+  // Set when publishing; kept when the project leaves Published.
+  youtubeLink: text("youtube_link"),
+  // A full ISO date, e.g. 2026-10-14.
+  publishedOn: text("published_on"),
   created: text("created").notNull(),
   updated: text("updated").notNull(),
 });

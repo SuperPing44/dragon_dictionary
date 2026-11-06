@@ -18,6 +18,12 @@ const ENTRIES = [
     count: "videoProjects",
   },
   {
+    href: "/archive",
+    label: "Archive",
+    icon: "/design/icon-archive.svg",
+    count: "archive",
+  },
+  {
     href: "/sources",
     label: "Source library",
     icon: "/design/icon-book.svg",

@@ -1,5 +1,12 @@
-import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
+import {
+  BOARD_STAGES,
+  type BoardMove,
+  type BoardStage,
+  reorderColumn,
+} from "@/lib/board";
+import { checkYouTubeLink, isIsoDate } from "@/lib/publish";
 import type { Db } from "./connection";
 import { sourceCountsByProject } from "./project-sources";
 import {
@@ -94,6 +101,7 @@ export function makeVideoProject(
       )
       .run();
     seedTitleOption(tx, project.id, project.title, now);
+    placeOnTop(tx, project.id, "research");
     tx.delete(idea).where(eq(idea.id, ideaId)).run();
     return project;
   });
@@ -120,12 +128,89 @@ function categoriesByProject(
   return result;
 }
 
-/** All video projects, most recently updated first, with their categories. */
+type Conn = Pick<Db, "select" | "update">;
+
+/**
+ * Puts a project on top of its stage's board column and renumbers that
+ * column (spec §3, Board order). Called whenever a project arrives in a
+ * stage: made from an idea, or moved with the stars.
+ */
+export function placeOnTop(db: Conn, projectId: string, stage: VideoStage) {
+  const others = db
+    .select({ id: videoProject.id })
+    .from(videoProject)
+    .where(and(eq(videoProject.stage, stage), ne(videoProject.id, projectId)))
+    .orderBy(asc(videoProject.boardPosition), desc(videoProject.updated))
+    .all()
+    .map((p) => p.id);
+  [projectId, ...others].forEach((id, boardPosition) => {
+    db.update(videoProject)
+      .set({ boardPosition })
+      .where(eq(videoProject.id, id))
+      .run();
+  });
+}
+
+/** A stage's column ids in board order. */
+function columnIds(db: Conn, stage: VideoStage): string[] {
+  return db
+    .select({ id: videoProject.id })
+    .from(videoProject)
+    .where(eq(videoProject.stage, stage))
+    .orderBy(asc(videoProject.boardPosition), desc(videoProject.updated))
+    .all()
+    .map((p) => p.id);
+}
+
+function renumber(db: Conn, ids: string[]) {
+  ids.forEach((id, boardPosition) => {
+    db.update(videoProject)
+      .set({ boardPosition })
+      .where(eq(videoProject.id, id))
+      .run();
+  });
+}
+
+/**
+ * Moves a card on the board (spec §5.3). Into another stage it's a stage
+ * change like the stars make, landing on top; within its column it goes
+ * before `beforeId` (or to the end). Both affected columns are renumbered.
+ */
+export function moveOnBoard(
+  db: Db,
+  { id, stage, beforeId }: BoardMove,
+  now = new Date(),
+): void {
+  const project = db
+    .select({ stage: videoProject.stage })
+    .from(videoProject)
+    .where(eq(videoProject.id, id))
+    .get();
+  if (!project) return;
+  if (!BOARD_STAGES.includes(stage as BoardStage)) {
+    throw new Error(`Not a board column: ${stage}`);
+  }
+  if (project.stage !== stage) {
+    // Lands on top of the new column via the stage change, which also
+    // renumbers the column it left.
+    updateVideoProject(db, id, { stage }, now);
+    return;
+  }
+  db.transaction((tx) => {
+    renumber(tx, reorderColumn(columnIds(tx, stage), id, beforeId));
+  });
+}
+
+/**
+ * The projects on the board (every stage but Published), with their
+ * categories, in board order within each stage.
+ */
 export function listVideoProjects(db: Db): VideoProjectWithCategories[] {
   const projects = db
     .select()
     .from(videoProject)
-    .orderBy(desc(videoProject.updated), desc(videoProject.created))
+    .where(ne(videoProject.stage, "published"))
+    .orderBy(asc(videoProject.boardPosition), desc(videoProject.updated))
     .all();
   const ids = projects.map((p) => p.id);
   const byProject = categoriesByProject(db, ids);
@@ -137,6 +222,44 @@ export function listVideoProjects(db: Db): VideoProjectWithCategories[] {
     wordCount: words.get(p.id) ?? 0,
     sourceCount: sources.get(p.id) ?? 0,
   }));
+}
+
+/**
+ * The archive (spec §5.4): published projects, newest publish date first.
+ * Projects without a date sort last.
+ */
+export function listArchive(db: Db): VideoProjectWithCategories[] {
+  const projects = db
+    .select()
+    .from(videoProject)
+    .where(eq(videoProject.stage, "published"))
+    .orderBy(
+      sql`${videoProject.publishedOn} is null`,
+      desc(videoProject.publishedOn),
+      desc(videoProject.updated),
+    )
+    .all();
+  const ids = projects.map((p) => p.id);
+  const byProject = categoriesByProject(db, ids);
+  const words = wordsByProject(db, ids);
+  const sources = sourceCountsByProject(db, ids);
+  return projects.map((p) => ({
+    ...p,
+    categories: byProject.get(p.id) ?? [],
+    wordCount: words.get(p.id) ?? 0,
+    sourceCount: sources.get(p.id) ?? 0,
+  }));
+}
+
+/** The number of published projects, for the sidebar. */
+export function countArchive(db: Db): number {
+  return (
+    db
+      .select({ n: count() })
+      .from(videoProject)
+      .where(eq(videoProject.stage, "published"))
+      .get()?.n ?? 0
+  );
 }
 
 export function getVideoProject(
@@ -175,6 +298,10 @@ export type VideoProjectChanges = {
   stage?: VideoStage;
   editingNote?: string;
   description?: string;
+  /** Blank clears it; otherwise an http(s) URL. */
+  youtubeLink?: string | null;
+  /** `YYYY-MM-DD`, or null to clear it. */
+  publishedOn?: string | null;
 };
 
 /**
@@ -203,22 +330,63 @@ export function updateVideoProject(
     values.editingNote = changes.editingNote;
   if (changes.description !== undefined)
     values.description = changes.description;
-  return db.transaction((tx) => {
-    if (values.title !== undefined) {
-      const old = tx
-        .select({ title: videoProject.title })
-        .from(videoProject)
-        .where(eq(videoProject.id, id))
-        .get();
-      if (old) syncTitleOptionsOnRename(tx, id, old.title, values.title);
+  if (changes.youtubeLink !== undefined) {
+    const check = checkYouTubeLink(changes.youtubeLink ?? "");
+    if (!check.ok) throw new Error(check.error);
+    values.youtubeLink = check.link;
+  }
+  if (changes.publishedOn !== undefined) {
+    if (changes.publishedOn !== null && !isIsoDate(changes.publishedOn)) {
+      throw new Error(`Not a date: ${changes.publishedOn}`);
     }
-    return tx
+    values.publishedOn = changes.publishedOn;
+  }
+  return db.transaction((tx) => {
+    const old = tx
+      .select({ title: videoProject.title, stage: videoProject.stage })
+      .from(videoProject)
+      .where(eq(videoProject.id, id))
+      .get();
+    if (old && values.title !== undefined) {
+      syncTitleOptionsOnRename(tx, id, old.title, values.title);
+    }
+    const updated = tx
       .update(videoProject)
       .set({ ...values, updated: now.toISOString() })
       .where(eq(videoProject.id, id))
       .returning()
       .get();
+    // A project that arrives in another stage lands on top of its column,
+    // and the column it left closes the gap.
+    if (old && values.stage !== undefined && values.stage !== old.stage) {
+      placeOnTop(tx, id, values.stage);
+      renumber(tx, columnIds(tx, old.stage));
+      return tx
+        .select()
+        .from(videoProject)
+        .where(eq(videoProject.id, id))
+        .get();
+    }
+    return updated;
   });
+}
+
+/**
+ * Publishes a project: moves it to Published with its YouTube link (blank
+ * for none yet) and publish date. Leaving Published later keeps both.
+ */
+export function publishVideoProject(
+  db: Db,
+  id: string,
+  { youtubeLink, publishedOn }: { youtubeLink: string; publishedOn: string },
+  now = new Date(),
+): VideoProject | undefined {
+  return updateVideoProject(
+    db,
+    id,
+    { stage: "published", youtubeLink, publishedOn },
+    now,
+  );
 }
 
 export function addProjectCategory(
@@ -270,6 +438,13 @@ export function deleteVideoProject(db: Db, id: string): void {
   db.delete(videoProject).where(eq(videoProject.id, id)).run();
 }
 
+/** Projects on the board, i.e. not published (the sidebar count). */
 export function countVideoProjects(db: Db): number {
-  return db.select({ n: count() }).from(videoProject).get()?.n ?? 0;
+  return (
+    db
+      .select({ n: count() })
+      .from(videoProject)
+      .where(ne(videoProject.stage, "published"))
+      .get()?.n ?? 0
+  );
 }

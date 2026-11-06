@@ -134,16 +134,17 @@ describe("video project changes", () => {
     expect(getVideoProject(db, id)?.categories).toEqual([]);
   });
 
-  it("lists most recently updated first", () => {
+  it("lists the board in board order, newest project on top", () => {
     const other = makeVideoProject(db, ideaWith("Krampus", null, null), tick());
     expect(listVideoProjects(db).map((p) => p.title)).toEqual([
       "Krampus",
       "Ragnarök",
     ]);
-    updateVideoProject(db, id, { stage: "editing" }, tick());
+    // Editing a project doesn't move it: the order is manual.
+    updateVideoProject(db, id, { title: "Ragnarök!" }, tick());
     expect(listVideoProjects(db).map((p) => p.title)).toEqual([
-      "Ragnarök",
       "Krampus",
+      "Ragnarök!",
     ]);
     expect(other).toBeDefined();
   });

@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises";
 import type { Readable } from "node:stream";
 import { io } from "next/cache";
 import { v7 as uuidv7 } from "uuid";
+import type { BoardMove } from "@/lib/board";
 import type { SourceValues } from "@/lib/sources";
 import * as backupQueries from "./backup";
 import * as brollQueries from "./broll";
@@ -143,6 +144,12 @@ export async function listVideoProjects() {
   return projectQueries.listVideoProjects(getDb());
 }
 
+/** Moves a card on the board: a stage change or a reorder (spec §5.3). */
+export async function moveOnBoard(move: BoardMove) {
+  await io();
+  projectQueries.moveOnBoard(getDb(), move);
+}
+
 export async function getVideoProject(id: string) {
   await io();
   return projectQueries.getVideoProject(getDb(), id);
@@ -159,6 +166,19 @@ export async function updateVideoProject(
 ) {
   await io();
   return projectQueries.updateVideoProject(getDb(), id, changes);
+}
+
+export async function listArchive() {
+  await io();
+  return projectQueries.listArchive(getDb());
+}
+
+export async function publishVideoProject(
+  id: string,
+  fields: { youtubeLink: string; publishedOn: string },
+) {
+  await io();
+  return projectQueries.publishVideoProject(getDb(), id, fields);
 }
 
 export async function addProjectCategory(
@@ -536,6 +556,7 @@ export async function backUpNow() {
 export type SidebarCounts = {
   ideas: number;
   videoProjects: number;
+  archive: number;
   sources: number;
   categories: number;
 };
@@ -546,6 +567,7 @@ export async function sidebarCounts(): Promise<SidebarCounts> {
   return {
     ideas: ideaQueries.countIdeas(db),
     videoProjects: projectQueries.countVideoProjects(db),
+    archive: projectQueries.countArchive(db),
     sources: sourceQueries.countSources(db),
     categories: categoryQueries.countCategories(db),
   };
