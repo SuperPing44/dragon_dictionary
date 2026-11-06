@@ -224,6 +224,44 @@ export function listVideoProjects(db: Db): VideoProjectWithCategories[] {
   }));
 }
 
+/**
+ * The archive (spec §5.4): published projects, newest publish date first.
+ * Projects without a date sort last.
+ */
+export function listArchive(db: Db): VideoProjectWithCategories[] {
+  const projects = db
+    .select()
+    .from(videoProject)
+    .where(eq(videoProject.stage, "published"))
+    .orderBy(
+      sql`${videoProject.publishedOn} is null`,
+      desc(videoProject.publishedOn),
+      desc(videoProject.updated),
+    )
+    .all();
+  const ids = projects.map((p) => p.id);
+  const byProject = categoriesByProject(db, ids);
+  const words = wordsByProject(db, ids);
+  const sources = sourceCountsByProject(db, ids);
+  return projects.map((p) => ({
+    ...p,
+    categories: byProject.get(p.id) ?? [],
+    wordCount: words.get(p.id) ?? 0,
+    sourceCount: sources.get(p.id) ?? 0,
+  }));
+}
+
+/** The number of published projects, for the sidebar. */
+export function countArchive(db: Db): number {
+  return (
+    db
+      .select({ n: count() })
+      .from(videoProject)
+      .where(eq(videoProject.stage, "published"))
+      .get()?.n ?? 0
+  );
+}
+
 export function getVideoProject(
   db: Db,
   id: string,
