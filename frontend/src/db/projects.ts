@@ -6,6 +6,7 @@ import {
   type BoardStage,
   reorderColumn,
 } from "@/lib/board";
+import { checkYouTubeLink, isIsoDate } from "@/lib/publish";
 import type { Db } from "./connection";
 import { sourceCountsByProject } from "./project-sources";
 import {
@@ -259,6 +260,10 @@ export type VideoProjectChanges = {
   stage?: VideoStage;
   editingNote?: string;
   description?: string;
+  /** Blank clears it; otherwise an http(s) URL. */
+  youtubeLink?: string | null;
+  /** `YYYY-MM-DD`, or null to clear it. */
+  publishedOn?: string | null;
 };
 
 /**
@@ -287,6 +292,17 @@ export function updateVideoProject(
     values.editingNote = changes.editingNote;
   if (changes.description !== undefined)
     values.description = changes.description;
+  if (changes.youtubeLink !== undefined) {
+    const check = checkYouTubeLink(changes.youtubeLink ?? "");
+    if (!check.ok) throw new Error(check.error);
+    values.youtubeLink = check.link;
+  }
+  if (changes.publishedOn !== undefined) {
+    if (changes.publishedOn !== null && !isIsoDate(changes.publishedOn)) {
+      throw new Error(`Not a date: ${changes.publishedOn}`);
+    }
+    values.publishedOn = changes.publishedOn;
+  }
   return db.transaction((tx) => {
     const old = tx
       .select({ title: videoProject.title, stage: videoProject.stage })
@@ -307,6 +323,24 @@ export function updateVideoProject(
       .returning()
       .get();
   });
+}
+
+/**
+ * Publishes a project: moves it to Published with its YouTube link (blank
+ * for none yet) and publish date. Leaving Published later keeps both.
+ */
+export function publishVideoProject(
+  db: Db,
+  id: string,
+  { youtubeLink, publishedOn }: { youtubeLink: string; publishedOn: string },
+  now = new Date(),
+): VideoProject | undefined {
+  return updateVideoProject(
+    db,
+    id,
+    { stage: "published", youtubeLink, publishedOn },
+    now,
+  );
 }
 
 export function addProjectCategory(

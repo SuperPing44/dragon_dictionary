@@ -16,6 +16,7 @@ import {
   removeCategoryFromProject,
   saveProject,
 } from "../actions";
+import { PublishDialog } from "../publish-dialog";
 
 type ProjectHeaderProps = {
   project: VideoProjectWithCategories;
@@ -31,6 +32,7 @@ export function ProjectHeader({
   defaultColour,
   rate,
 }: ProjectHeaderProps) {
+  const [publishing, setPublishing] = useState(false);
   return (
     <header className="flex items-center gap-4">
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
@@ -55,10 +57,16 @@ export function ProjectHeader({
       </div>
       <StageStars
         stage={project.stage}
-        onChange={(stage) =>
-          startTransition(() => saveProject(project.id, { stage }))
-        }
+        onChange={(stage) => {
+          if (stage === project.stage) return;
+          // Publishing asks for the YouTube link and date first.
+          if (stage === "published") return setPublishing(true);
+          startTransition(() => saveProject(project.id, { stage }));
+        }}
       />
+      {publishing && (
+        <PublishDialog project={project} onClose={() => setPublishing(false)} />
+      )}
     </header>
   );
 }
