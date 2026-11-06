@@ -1,9 +1,8 @@
 import Image from "next/image";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/page-header";
-import { getSpeakingRate, listArchive } from "@/db";
-import { archiveCountLine } from "@/lib/format";
-import { ArchiveRow } from "./archive-row";
+import { getSpeakingRate, listArchive, listCategories } from "@/db";
+import { ArchiveList } from "./archive-list";
 
 const TITLE = "Archive";
 
@@ -33,25 +32,11 @@ async function Archive() {
     );
   }
   return (
-    <>
-      <PageHeader title={TITLE} subtitle={archiveCountLine(projects.length)} />
-      <div className="flex min-h-0 flex-1 flex-col gap-2">
-        <div
-          aria-hidden
-          className="flex items-center gap-5 px-3 font-label font-semibold text-[11px] text-fg-muted uppercase tracking-[1.1px]"
-        >
-          <span className="w-24 shrink-0" />
-          <span className="flex-1">Video</span>
-          <span className="w-32 shrink-0">Published</span>
-          <span className="w-20 shrink-0">Length</span>
-          <span className="w-52 shrink-0">YouTube</span>
-        </div>
-        <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
-          {projects.map((project) => (
-            <ArchiveRow key={project.id} project={project} rate={rate} />
-          ))}
-        </ul>
-      </div>
-    </>
+    <ArchiveList
+      title={TITLE}
+      projects={projects}
+      categories={await listCategories()}
+      rate={rate}
+    />
   );
 }

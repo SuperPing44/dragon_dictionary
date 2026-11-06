@@ -2,15 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import {
-  startTransition,
-  useEffect,
-  useOptimistic,
-  useRef,
-  useState,
-} from "react";
+import { startTransition, useEffect, useOptimistic, useState } from "react";
 import { categoryColour } from "@/components/category-chip";
+import { CategoryFilter } from "@/components/category-filter";
 import { PageHeader } from "@/components/page-header";
+import { TitleSearch } from "@/components/title-search";
 import type { VideoProjectWithCategories } from "@/db/projects";
 import type { Category } from "@/db/schema";
 import {
@@ -113,27 +109,16 @@ export function BoardView({
           }
         />
         <div className="flex items-center gap-3 pt-2">
-          <label className="flex w-[240px] items-center gap-2.5 rounded-xl border border-border-strong bg-surface-2 px-3.5 py-[9px] focus-within:border-accent">
-            <Image
-              src="/design/icon-search.svg"
-              alt=""
-              width={18}
-              height={18}
-            />
-            <input
-              type="search"
-              value={filter.query}
-              onChange={(e) => setFilter({ ...filter, query: e.target.value })}
-              placeholder="Search titles…"
-              aria-label="Search titles"
-              className="min-w-0 flex-1 bg-transparent text-[15px] text-fg outline-none placeholder:text-fg-faint"
-            />
-          </label>
+          <TitleSearch
+            value={filter.query}
+            onChange={(query) => setFilter({ ...filter, query })}
+          />
           {categories.length > 0 && (
             <CategoryFilter
               categories={categories}
               picked={filter.cats}
               onChange={(cats) => setFilter({ ...filter, cats })}
+              hint="A card shows if it has any picked category"
             />
           )}
         </div>
@@ -245,104 +230,6 @@ export function BoardView({
         })}
       </div>
     </>
-  );
-}
-
-type CategoryFilterProps = {
-  categories: Category[];
-  picked: string[];
-  onChange: (cats: string[]) => void;
-};
-
-/** The Categories popover: checkboxes; a card shows with any picked one. */
-function CategoryFilter({ categories, picked, onChange }: CategoryFilterProps) {
-  const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  const chosen = categories.filter((c) => picked.includes(c.id));
-
-  useEffect(() => {
-    if (!open) return;
-    const outside = (e: PointerEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  return (
-    <div ref={root} className="relative">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-haspopup="true"
-        onClick={() => setOpen((o) => !o)}
-        className={`flex max-w-[320px] items-center gap-2.5 rounded-xl border bg-surface-2 px-3.5 py-[9px] font-label text-[14px] ${
-          chosen.length > 0 || open
-            ? "border-accent text-fg"
-            : "border-border-strong text-fg-muted hover:text-fg"
-        }`}
-      >
-        <Image src="/design/icon-tag-small.svg" alt="" width={16} height={16} />
-        {chosen.length > 0 && (
-          <span aria-hidden className="flex gap-1">
-            {chosen.map((c) => (
-              <span
-                key={c.id}
-                className="size-2 rounded-full"
-                style={{ backgroundColor: categoryColour(c.colour) }}
-              />
-            ))}
-          </span>
-        )}
-        <span className="truncate">
-          {chosen.length > 0
-            ? chosen.map((c) => c.name).join(", ")
-            : "Categories"}
-        </span>
-        <Image src="/design/icon-chevron.svg" alt="" width={14} height={14} />
-      </button>
-      {open && (
-        <fieldset className="absolute top-full right-0 z-20 mt-2 flex max-h-[60vh] w-[250px] flex-col overflow-y-auto rounded-xl border border-border-strong bg-surface-2 p-1.5 shadow-[0_12px_32px_rgb(0_0_0/0.5)]">
-          <legend className="sr-only">Filter by category</legend>
-          {categories.map((c) => {
-            const on = picked.includes(c.id);
-            return (
-              <label
-                key={c.id}
-                className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[14px] text-fg-muted hover:bg-surface-3 has-checked:text-fg"
-              >
-                <input
-                  type="checkbox"
-                  checked={on}
-                  onChange={() =>
-                    onChange(
-                      on ? picked.filter((x) => x !== c.id) : [...picked, c.id],
-                    )
-                  }
-                  className="size-4 accent-accent"
-                />
-                <span
-                  aria-hidden
-                  className="size-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: categoryColour(c.colour) }}
-                />
-                {c.name}
-              </label>
-            );
-          })}
-          <p className="mt-1 border-border-soft border-t px-2.5 pt-1.5 pb-0.5 text-[12px] text-fg-faint italic">
-            A card shows if it has any picked category
-          </p>
-        </fieldset>
-      )}
-    </div>
   );
 }
 
