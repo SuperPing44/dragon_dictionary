@@ -12,6 +12,7 @@ import {
   listVideoProjects,
   makeVideoProject,
   moveOnBoard,
+  publishVideoProject,
   updateVideoProject,
 } from "./projects";
 import { undoBoardMigration } from "./test-migrations";
@@ -246,5 +247,47 @@ describe("applyBoardMove (shown at once)", () => {
       "c",
       "a",
     ]);
+  });
+});
+
+describe("publishing from the board", () => {
+  it("takes the card off the board and renumbers its column", () => {
+    const [a, b, c] = [make("A"), make("B"), make("C")];
+    // Research reads C, B, A.
+    publishVideoProject(
+      db,
+      b,
+      { youtubeLink: "", publishedOn: "2026-11-07" },
+      tick(),
+    );
+    expect(columns().research).toEqual(["C", "A"]);
+    expect(
+      db.$client
+        .prepare(
+          "select title, board_position as p from video_project where stage = 'research' order by p",
+        )
+        .all(),
+    ).toEqual([
+      { title: "C", p: 0 },
+      { title: "A", p: 1 },
+    ]);
+    expect(countVideoProjects(db)).toBe(2);
+    expect(a && c).toBeTruthy();
+  });
+
+  it("a stage change with the stars also renumbers the column left", () => {
+    const [a, b] = [make("A"), make("B"), make("C")];
+    updateVideoProject(db, b, { stage: "script" }, tick());
+    expect(
+      db.$client
+        .prepare(
+          "select title, board_position as p from video_project where stage = 'research' order by p",
+        )
+        .all(),
+    ).toEqual([
+      { title: "C", p: 0 },
+      { title: "A", p: 1 },
+    ]);
+    expect(a).toBeTruthy();
   });
 });

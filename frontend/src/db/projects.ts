@@ -191,9 +191,9 @@ export function moveOnBoard(
     throw new Error(`Not a board column: ${stage}`);
   }
   if (project.stage !== stage) {
-    // Lands on top of the new column via the stage change.
+    // Lands on top of the new column via the stage change, which also
+    // renumbers the column it left.
     updateVideoProject(db, id, { stage }, now);
-    renumber(db, columnIds(db, project.stage));
     return;
   }
   db.transaction((tx) => {
@@ -350,16 +350,24 @@ export function updateVideoProject(
     if (old && values.title !== undefined) {
       syncTitleOptionsOnRename(tx, id, old.title, values.title);
     }
-    // A project that arrives in another stage lands on top of its column.
-    if (old && values.stage !== undefined && values.stage !== old.stage) {
-      placeOnTop(tx, id, values.stage);
-    }
-    return tx
+    const updated = tx
       .update(videoProject)
       .set({ ...values, updated: now.toISOString() })
       .where(eq(videoProject.id, id))
       .returning()
       .get();
+    // A project that arrives in another stage lands on top of its column,
+    // and the column it left closes the gap.
+    if (old && values.stage !== undefined && values.stage !== old.stage) {
+      placeOnTop(tx, id, values.stage);
+      renumber(tx, columnIds(tx, old.stage));
+      return tx
+        .select()
+        .from(videoProject)
+        .where(eq(videoProject.id, id))
+        .get();
+    }
+    return updated;
   });
 }
 
