@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Archive screen: published projects, newest publish date first (no date last), each row with its final thumbnail or the dimmed dragon emblem, categories, publish date, length, and the YouTube link or an amber "Add link". The sidebar has an Archive entry with a count (#59).
 - Archive filters: a title search, a category filter (any picked category, as on the board) and a year filter offering only years with published videos. The header reads "n of m shown · Clear filters" while filtering, and all filters reset when you leave the Archive (#60).
 - Published projects: a Published row in the project header shows the publish date and YouTube link, both editable (the link can be cleared), plus "Open on YouTube ↗". The back link reads "← Archive" for a published project (#61).
+- Kanban board: while a card is dragged, a gold Publish → Archive zone appears at the right edge. Dropping a card there opens the publish dialog; Cancel leaves the card where it was. A stage change now also renumbers the column the project left (#62).
 - Publishing: the seventh stage star opens a publish dialog with an optional YouTube link (an http(s) URL; a non-YouTube link gets a hint) and the publish date, prefilled with today or the kept date. Cancel leaves the project where it was. The link and date are kept when a project goes back to the board. The 0.5.0 migration adds both fields (#58).
 
 ### Changed

@@ -23,6 +23,7 @@ import {
 import { boardCountLine, filterCountLine, speakingTime } from "@/lib/format";
 import { STAGE_LABELS } from "@/lib/labels";
 import { moveCardAction } from "./actions";
+import { PublishDialog } from "./publish-dialog";
 
 type BoardViewProps = {
   title: string;
@@ -40,7 +41,8 @@ type DropTarget = { stage: BoardStage; beforeId: string | null };
  * The board (spec §5.3, Figma K1–K3): its header with the filter, and the
  * columns. Cards are dragged between columns to change the stage, landing
  * on top, or within a column to reorder it. Moves show at once and save
- * immediately.
+ * immediately. While dragging, a Publish → Archive zone appears at the
+ * right edge (K2b); dropping there opens the publish dialog.
  */
 export function BoardView({
   title,
@@ -58,6 +60,9 @@ export function BoardView({
   );
   const [over, setOver] = useState<DropTarget | null>(null);
   const [filter, setFilter] = useState<BoardFilter>(NO_FILTER);
+  const [overPublish, setOverPublish] = useState(false);
+  const [publishing, setPublishing] =
+    useState<VideoProjectWithCategories | null>(null);
 
   // The filter resets when you leave the screen. Next keeps a left route's
   // state for going back, so clear it whenever the board is hidden.
@@ -66,10 +71,22 @@ export function BoardView({
   const filtering = isFiltering(filter);
   const visible = shown.filter((p) => matchesBoardFilter(p, filter));
 
-  function drop(target: DropTarget) {
-    const card = dragging;
+  function endDrag() {
     setDragging(null);
     setOver(null);
+    setOverPublish(false);
+  }
+
+  function dropOnPublish() {
+    const card = dragging;
+    endDrag();
+    // The dialog decides; Cancel leaves the card where it was.
+    if (card) setPublishing(card);
+  }
+
+  function drop(target: DropTarget) {
+    const card = dragging;
+    endDrag();
     if (!card) return;
     if (card.stage === target.stage && target.beforeId === card.id) return;
     // Within a column, the card is placed relative to the cards you can see.
@@ -210,10 +227,7 @@ export function BoardView({
                           rate={rate}
                           isDragging={dragging?.id === project.id}
                           onDragStart={() => setDragging(project)}
-                          onDragEnd={() => {
-                            setDragging(null);
-                            setOver(null);
-                          }}
+                          onDragEnd={endDrag}
                         />
                       </li>
                     );
@@ -228,8 +242,73 @@ export function BoardView({
             </section>
           );
         })}
+        {dragging && (
+          <PublishZone
+            over={overPublish}
+            onOver={() => {
+              setOver(null);
+              setOverPublish(true);
+            }}
+            onLeave={() => setOverPublish(false)}
+            onDrop={dropOnPublish}
+          />
+        )}
       </div>
+      {publishing && (
+        <PublishDialog
+          project={publishing}
+          onClose={() => setPublishing(null)}
+        />
+      )}
     </>
+  );
+}
+
+/** The gold Publish → Archive drop zone at the board's right edge (K2b). */
+function PublishZone({
+  over,
+  onOver,
+  onLeave,
+  onDrop,
+}: {
+  over: boolean;
+  onOver: () => void;
+  onLeave: () => void;
+  onDrop: () => void;
+}) {
+  return (
+    <section
+      aria-label="Publish to the Archive"
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (!over) onOver();
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) onLeave();
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDrop();
+      }}
+      className={`flex w-32 shrink-0 flex-col items-center justify-center gap-2.5 rounded-[18px] border-2 border-dashed px-3 text-center transition-colors ${
+        over
+          ? "border-gold bg-gold/10 shadow-[0_0_20px_rgb(233_196_106/0.35)]"
+          : "border-gold/60 bg-gold/[0.03]"
+      }`}
+    >
+      <Image
+        src="/design/icon-archive-gold.svg"
+        alt=""
+        width={24}
+        height={24}
+        className="pointer-events-none"
+      />
+      <p className="pointer-events-none font-bold font-heading text-[14px] text-gold leading-snug">
+        Publish
+        <br />→ Archive
+      </p>
+    </section>
   );
 }
 
