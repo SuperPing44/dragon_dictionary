@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getSpeakingRate, listSections } from "@/db";
+import { getScriptView, getSpeakingRate, listSections } from "@/db";
 import { ScriptEditor } from "./script-editor";
 
 /** The Script tab. */
@@ -22,6 +22,7 @@ async function Script({
       projectId={id}
       rate={await getSpeakingRate()}
       sections={await listSections(id)}
+      initialView={await getScriptView()}
     />
   );
 }

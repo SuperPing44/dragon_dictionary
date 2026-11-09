@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Script emphasis: bold, italic and underline with Ctrl+B / Ctrl+I / Ctrl+U or the new B / I / U buttons in the writing-area header, which show when a mark is active. The header now stays in view while a long section scrolls. Emphasis shows in the teleprompter too, and stage directions keep their own look. Strikethrough is turned off; old strikethrough is dropped and its text kept (#63).
+- Script tab: a Sections | Full script toggle in the writing-area header, remembered across projects. Full script shows every section in outline order in one centred column, each under its heading (subsection titles editable in place) and still saved on its own; empty sections can be typed into. The outline stays: clicking an entry scrolls to it, and the section with the cursor (or at the top of the screen) is highlighted. Switching views keeps the place. B / I / U and Image act on the section with the cursor, ▷ Teleprompter starts there (or at the beginning), and B-roll jumps scroll to the direction. The writing-area header now wraps on narrow windows instead of scrolling sideways (#64).
 
 ## [0.5.0] - 2026-11-07
 

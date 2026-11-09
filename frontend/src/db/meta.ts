@@ -1,5 +1,10 @@
 import { eq } from "drizzle-orm";
 import {
+  DEFAULT_SCRIPT_VIEW,
+  isScriptView,
+  type ScriptView,
+} from "@/lib/script-view";
+import {
   DEFAULT_SPEED_LEVEL,
   DEFAULT_TEXT_SIZE,
   isValidSpeedLevel,
@@ -90,4 +95,20 @@ export function getDescriptionFooter(db: Db): string {
 /** Sets the footer; plain text, empty allowed. */
 export function setDescriptionFooter(db: Db, footer: string): void {
   setMeta(db, FOOTER_KEY, footer);
+}
+
+const SCRIPT_VIEW_KEY = "script_view";
+
+/** The Script tab's view last used, in any project ("sections" at first). */
+export function getScriptView(db: Db): ScriptView {
+  const stored = getMeta(db, SCRIPT_VIEW_KEY);
+  return isScriptView(stored) ? stored : DEFAULT_SCRIPT_VIEW;
+}
+
+/** Remembers the Script tab's view: "sections" or "full". */
+export function setScriptView(db: Db, view: ScriptView): void {
+  if (!isScriptView(view)) {
+    throw new Error('The script view must be "sections" or "full".');
+  }
+  setMeta(db, SCRIPT_VIEW_KEY, view);
 }
