@@ -403,6 +403,18 @@ export function ScriptEditor({
     );
   }
 
+  /**
+   * Opens the Script PDF's print layout, once all text is saved: it's
+   * rendered from the saved sections and opens the print dialog.
+   */
+  async function exportPdf() {
+    if (!canRead) return;
+    commitTitles();
+    await Promise.all([...pending.current.keys()].map(flush));
+    markOpenedFromScript(projectId);
+    router.push(`/projects/${projectId}/print`);
+  }
+
   function open(id: string) {
     if (full) {
       setSelectedId(id);
@@ -480,7 +492,7 @@ export function ScriptEditor({
         : "Starts at the beginning · Click into a section to start there"
       : `Starts at “${selected ? entryName(selected) : ""}” · Select another entry in the outline to start there`;
 
-  // The sticky header: toggle, emphasis, ▷ Teleprompter and Image.
+  // The sticky header: toggle, emphasis, ▷ Teleprompter, Export PDF and Image.
   const tools = (
     <>
       <ViewToggle view={view} onChange={switchView} />
@@ -507,6 +519,29 @@ export function ScriptEditor({
           className="pointer-events-none absolute top-full right-0 z-20 mt-2 hidden w-max max-w-[300px] rounded-lg border border-border-strong bg-surface-3 px-3 py-2 font-label text-[12px] text-fg-muted leading-snug shadow-[0_10px_30px_rgb(0_0_0/0.55)] group-focus-within:block group-hover:block"
         >
           {teleprompterTip}
+        </span>
+      </span>
+      <span className="group relative shrink-0">
+        <button
+          type="button"
+          aria-disabled={!canRead}
+          aria-describedby="export-pdf-tip"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={exportPdf}
+          className={`flex items-center rounded-xl border border-border-strong bg-surface-2 px-3 py-2 font-bold font-heading text-[13px] text-fg tracking-[0.78px] ${
+            canRead ? "hover:bg-surface-3" : "cursor-not-allowed opacity-40"
+          }`}
+        >
+          Export PDF
+        </button>
+        <span
+          id="export-pdf-tip"
+          role="tooltip"
+          className="pointer-events-none absolute top-full right-0 z-20 mt-2 hidden w-max max-w-[300px] rounded-lg border border-border-strong bg-surface-3 px-3 py-2 font-label text-[12px] text-fg-muted leading-snug shadow-[0_10px_30px_rgb(0_0_0/0.55)] group-focus-within:block group-hover:block"
+        >
+          {canRead
+            ? "Opens the print dialog · Choose “Save as PDF” there"
+            : "Nothing to export yet · Write something in any section first"}
         </span>
       </span>
       <button

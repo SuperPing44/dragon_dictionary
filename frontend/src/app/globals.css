@@ -129,3 +129,90 @@ body {
     box-shadow: 0 0 0 2px var(--color-amber);
   }
 }
+
+/*
+ * Script PDF (v3 spec §4.3): black on white whatever the dark theme, a
+ * serif body, A4 with page numbers at the bottom. Sections run on; a
+ * heading stays with the text after it.
+ */
+.print-sheet {
+  color: #000;
+  font-family: var(--font-body), Georgia, serif;
+  font-size: 12pt;
+  line-height: 1.5;
+}
+
+.print-sheet h1 {
+  margin-bottom: 14pt;
+  font-size: 22pt;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.print-sheet h2,
+.print-sheet h3 {
+  break-after: avoid;
+  page-break-after: avoid;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.print-sheet h2 {
+  margin: 16pt 0 5pt;
+  font-size: 16pt;
+}
+
+.print-sheet h3 {
+  margin: 12pt 0 4pt;
+  font-size: 13.5pt;
+}
+
+.print-text p {
+  orphans: 3;
+  widows: 3;
+}
+
+.print-text p + p {
+  margin-top: 0.6em;
+}
+
+.print-direction {
+  color: #666;
+  font-style: italic;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 20mm 20mm 22mm;
+
+    @bottom-center {
+      content: counter(page);
+      color: #000;
+      font-family: Georgia, serif;
+      font-size: 10pt;
+    }
+  }
+
+  /* While the print layout is shown (html.printing-script), only the
+     sheet prints: everything around it is hidden, and what holds it lets
+     it flow over pages. */
+  .printing-script body
+    *:not(:has(.print-sheet), .print-sheet, .print-sheet *) {
+    display: none;
+  }
+
+  html.printing-script,
+  .printing-script body,
+  .printing-script body :has(.print-sheet) {
+    display: block;
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    background: #fff;
+    box-shadow: none;
+  }
+}
