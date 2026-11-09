@@ -7,7 +7,7 @@ import {
   type JSONContent,
   useEditor,
 } from "@tiptap/react";
-import { useEffect } from "react";
+import { useEffect, useEffectEvent } from "react";
 import { ScriptStarterKit } from "@/lib/script-schema";
 import { StageDirection } from "./stage-direction";
 
@@ -15,7 +15,10 @@ type EntryEditorProps = {
   /** The stored Tiptap JSON; only read when the editor is created. */
   initial: JSONContent;
   placeholder: string;
+  /** Short entries take only their text's height (Full script). */
+  compact?: boolean;
   onChange: (doc: JSONContent) => void;
+  onFocus?: () => void;
   onBlur: () => void;
   /** Hands out the editor, e.g. for the Image button. */
   onEditor: (editor: Editor | null) => void;
@@ -25,7 +28,9 @@ type EntryEditorProps = {
 export function EntryEditor({
   initial,
   placeholder,
+  compact = false,
   onChange,
+  onFocus,
   onBlur,
   onEditor,
 }: EntryEditorProps) {
@@ -40,19 +45,21 @@ export function EntryEditor({
     content: initial,
     editorProps: {
       attributes: {
-        class:
-          "script-text min-h-[50vh] text-[20px] text-fg leading-[1.9] outline-none",
+        class: `script-text ${compact ? "min-h-[1.9em]" : "min-h-[50vh]"} text-[20px] text-fg leading-[1.9] outline-none`,
         "aria-label": "Script text",
       },
     },
     onUpdate: ({ editor }) => onChange(editor.getJSON()),
+    onFocus: () => onFocus?.(),
     onBlur,
   });
 
+  // An event, so a new callback each render doesn't re-announce the editor.
+  const announce = useEffectEvent((e: Editor | null) => onEditor(e));
   useEffect(() => {
-    onEditor(editor);
-    return () => onEditor(null);
-  }, [editor, onEditor]);
+    announce(editor);
+    return () => announce(null);
+  }, [editor]);
 
   return <EditorContent editor={editor} />;
 }

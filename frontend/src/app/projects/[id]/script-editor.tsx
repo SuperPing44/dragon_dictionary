@@ -25,11 +25,18 @@ import {
   parseDoc,
 } from "@/lib/script";
 import {
+  entryAfterSwitch,
+  entryAtTop,
+  type ScriptView,
+  teleprompterEntry,
+} from "@/lib/script-view";
+import {
   markOpenedFromScript,
   takeReadingEntry,
 } from "@/lib/teleprompter-return";
 import { EmphasisToolbar } from "./emphasis-toolbar";
 import { EntryEditor } from "./entry-editor";
+import { FullScript, ViewToggle } from "./full-script";
 import {
   addSectionAction,
   addSubsectionAction,
@@ -38,10 +45,34 @@ import {
   reorderAction,
   saveSection,
   setRateAction,
+  setScriptViewAction,
 } from "./script-actions";
 import { insertStageDirection } from "./stage-direction";
 
 const SAVE_DELAY_MS = 1000;
+
+/** In Full script, the gap between the sticky header and a heading scrolled to. */
+const SCROLL_GAP_PX = 16;
+
+/**
+ * In Full script, a heading counts as at the top of the screen once it's
+ * within this many px below the sticky header (more than the gap above).
+ */
+const TOP_LINE_SLACK_PX = 40;
+
+/**
+ * How far below the top of its scrolling ancestor a sticky `top-0` header
+ * ends once it's stuck: the ancestor's top padding plus the header's height.
+ */
+function stuckHeaderBottom(header: HTMLElement | null): number {
+  if (!header) return 0;
+  let el = header.parentElement;
+  while (el && !/auto|scroll/.test(getComputedStyle(el).overflowY)) {
+    el = el.parentElement;
+  }
+  const padding = el ? Number.parseFloat(getComputedStyle(el).paddingTop) : 0;
+  return padding + header.offsetHeight;
+}
 
 type ScriptEditorProps = {
   projectId: string;
@@ -49,6 +80,8 @@ type ScriptEditorProps = {
   rate: number;
   /** Top-level sections by position, each followed by its subsections. */
   sections: Section[];
+  /** The view last used, in any project. */
+  initialView: ScriptView;
 };
 
 /**
@@ -97,30 +130,48 @@ function withGroupOrder(
 }
 
 /**
- * The Script tab: an outline on the left and a writing area showing one
- * entry at a time. Text saves about a second after typing stops, and at
- * once when the entry loses focus or another entry is opened.
+ * The Script tab: an outline on the left and a writing area in one of two
+ * views. **Sections** shows one entry at a time; **Full script** shows them
+ * all in one column, each still its own editor. Text saves about a second
+ * after typing stops, and at once when the entry loses focus or another
+ * entry is opened.
  */
 export function ScriptEditor({
   projectId,
   rate,
   sections: saved,
+  initialView,
 }: ScriptEditorProps) {
   // Reorders show at once while they save.
   const [sections, showSections] = useOptimistic(saved);
+  const [view, setView] = useState(initialView);
   const [selectedId, setSelectedId] = useState(saved[0]?.id);
   // Subsection titles typed in this session, by section ID.
   const [titles, setTitles] = useState<Record<string, string>>({});
   // A just-added subsection, whose title field takes focus.
   const [freshId, setFreshId] = useState<string | null>(null);
-  const [editor, setEditor] = useState<Editor | null>(null);
+  // The live editors, by section ID: one in Sections, all in Full script.
+  const [editors, setEditors] = useState<Record<string, Editor>>({});
+  // Full script: the entry with the cursor, and the one at the top.
+  const [cursorId, setCursorId] = useState<string>();
+  const [topId, setTopId] = useState<string>();
+  // Full script: an entry to scroll to once it's on screen.
+  const [scrollTarget, setScrollTarget] = useState<{
+    id: string;
+    smooth: boolean;
+  }>();
+  // Full script: a just-added entry whose text takes the cursor.
+  const [focusId, setFocusId] = useState<string>();
   // Live documents typed in this session, by section ID.
   const [docs, setDocs] = useState<Record<string, DocNode>>({});
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const savedTitles = useRef(new Map<string, string>());
   const pending = useRef(new Map<string, string>());
+  const column = useRef<HTMLDivElement>(null);
+  const header = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  const full = view === "full";
   const shown = (s: Section): Section =>
     s.id in titles ? { ...s, title: titles[s.id] } : s;
   const docOf = (s: Section) => docs[s.id] ?? parseDoc(s.content);
@@ -129,6 +180,17 @@ export function ScriptEditor({
     docs[s.id] ? countWords(docs[s.id]) : s.wordCount;
   const found = sections.find((s) => s.id === selectedId) ?? sections[0];
   const selected = found ? shown(found) : undefined;
+  const cursorEntry = sections.find((s) => s.id === cursorId);
+  // The entry the toolbar and Image button act on.
+  const editor = full
+    ? cursorId
+      ? (editors[cursorId] ?? null)
+      : null
+    : selected
+      ? (editors[selected.id] ?? null)
+      : null;
+  // The outline's highlight: in Full script, where the writer is.
+  const currentId = full ? (cursorId ?? topId) : selected?.id;
   const tops = sections.filter((s) => s.parent === null);
   const missing = missingKinds(tops.map((s) => s.kind as SectionKind));
   const totalWords = sections.reduce((n, s) => n + wordsOf(s), 0);
@@ -142,9 +204,18 @@ export function ScriptEditor({
 
   const flush = (id: string) => flushSave(timers.current, pending.current, id);
 
-  // From the B-roll list (?entry=…&direction=…): open that entry, then
-  // scroll to the direction and make it glow briefly. If it's gone, the
-  // entry still opens, with no glow.
+  function registerEditor(id: string, e: Editor | null) {
+    setEditors((prev) => {
+      if (e) return prev[id] === e ? prev : { ...prev, [id]: e };
+      if (!(id in prev)) return prev;
+      const { [id]: _gone, ...rest } = prev;
+      return rest;
+    });
+  }
+
+  // From the B-roll list (?entry=…&direction=…): open that entry (or
+  // scroll to it in Full script), then scroll to the direction and make it
+  // glow briefly. If it's gone, the entry still opens, with no glow.
   const searchParams = useSearchParams();
   const [glow, setGlow] = useState<{ sectionId: string; index: number }>();
   const handledLink = useRef(false);
@@ -154,7 +225,9 @@ export function ScriptEditor({
     const target = scriptItemTarget(searchParams);
     if (!target || !saved.some((s) => s.id === target.sectionId)) return;
     setSelectedId(target.sectionId);
-    if (target.index !== undefined) {
+    if (target.index === undefined) {
+      setScrollTarget({ id: target.sectionId, smooth: false });
+    } else {
       setGlow({ sectionId: target.sectionId, index: target.index });
     }
     // Drop the parameters, so a reload doesn't jump again.
@@ -162,21 +235,100 @@ export function ScriptEditor({
   }, [searchParams, saved, projectId, router]);
 
   useEffect(() => {
-    if (!glow || !editor || selected?.id !== glow.sectionId) return;
+    if (!glow) return;
+    if (!full && selected?.id !== glow.sectionId) return;
+    const target = editors[glow.sectionId];
+    if (!target) return;
+    // In Full script, once every entry holds its text, so nothing grows
+    // above the direction after scrolling to it.
+    if (full && !sections.every((s) => editors[s.id])) return;
     setGlow(undefined);
-    const pos = directionPosition(editor.state.doc, glow.index);
-    const dom = pos === undefined ? null : editor.view.nodeDOM(pos);
-    if (!(dom instanceof HTMLElement)) return;
-    dom.scrollIntoView({ block: "center", behavior: "smooth" });
+    const pos = directionPosition(target.state.doc, glow.index);
+    const dom = pos === undefined ? null : target.view.nodeDOM(pos);
+    if (!(dom instanceof HTMLElement)) {
+      // The direction is gone: still show its entry.
+      setScrollTarget({ id: glow.sectionId, smooth: false });
+      return;
+    }
+    requestAnimationFrame(() =>
+      dom.scrollIntoView({ block: "center", behavior: "smooth" }),
+    );
     dom.classList.add("direction-glow");
     setTimeout(() => dom.classList.remove("direction-glow"), 2000);
-  }, [glow, editor, selected?.id]);
+  }, [glow, editors, full, selected?.id, sections]);
 
-  // Back from the teleprompter: select the entry that was being read.
+  // Back from the teleprompter: select (or scroll to) the entry that was
+  // being read.
   useEffect(() => {
     const id = takeReadingEntry(projectId);
-    if (id && saved.some((s) => s.id === id)) setSelectedId(id);
+    if (!id || !saved.some((s) => s.id === id)) return;
+    setSelectedId(id);
+    setScrollTarget({ id, smooth: false });
   }, [projectId, saved]);
+
+  // Full script: scroll to the target entry once its block is there (a
+  // just-added one only appears after the save comes back) and every
+  // editor holds its text, so nothing above it grows afterwards.
+  useEffect(() => {
+    if (!scrollTarget || !full) return;
+    if (!sections.every((s) => editors[s.id])) return;
+    const block = column.current?.querySelector<HTMLElement>(
+      `[data-entry-block="${CSS.escape(scrollTarget.id)}"]`,
+    );
+    if (!block) return;
+    setScrollTarget(undefined);
+    // Its heading lands just below the sticky header, which may wrap and
+    // sticks below the scrolling column's top padding.
+    block.style.scrollMarginTop = `${stuckHeaderBottom(header.current) + SCROLL_GAP_PX}px`;
+    // After the editors' text is laid out.
+    requestAnimationFrame(() =>
+      block.scrollIntoView({
+        block: "start",
+        behavior: scrollTarget.smooth ? "smooth" : "instant",
+      }),
+    );
+  }, [scrollTarget, full, sections, editors]);
+
+  // Full script: a just-added entry takes the cursor once its editor exists.
+  useEffect(() => {
+    if (!focusId || !editors[focusId]) return;
+    editors[focusId].commands.focus();
+    setFocusId(undefined);
+  }, [focusId, editors]);
+
+  // Full script: keep track of the entry at the top of the screen.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-measures when the entries change
+  useEffect(() => {
+    if (!full) return;
+    const measure = () => {
+      const blocks =
+        column.current?.querySelectorAll<HTMLElement>("[data-entry-block]") ??
+        [];
+      const line =
+        (header.current?.getBoundingClientRect().bottom ?? 0) +
+        TOP_LINE_SLACK_PX;
+      setTopId(
+        entryAtTop(
+          [...blocks].map((el) => ({
+            id: el.dataset.entryBlock ?? "",
+            top: el.getBoundingClientRect().top,
+          })),
+          line,
+        ),
+      );
+    };
+    measure();
+    // Capture, since the page scrolls inside the app's main column.
+    document.addEventListener("scroll", measure, {
+      capture: true,
+      passive: true,
+    });
+    window.addEventListener("resize", measure);
+    return () => {
+      document.removeEventListener("scroll", measure, { capture: true });
+      window.removeEventListener("resize", measure);
+    };
+  }, [full, sections]);
 
   function change(id: string, doc: JSONContent) {
     setDocs((prev) => ({ ...prev, [id]: doc as DocNode }));
@@ -202,6 +354,11 @@ export function ScriptEditor({
     };
   }, []);
 
+  /** Saves every subsection title typed but not yet saved. */
+  function commitTitles() {
+    for (const id of Object.keys(titles)) commitTitle(id);
+  }
+
   /** Saves the open entry's text and title before another one opens. */
   function leave() {
     if (!selected) return;
@@ -209,18 +366,49 @@ export function ScriptEditor({
     commitTitle(selected.id);
   }
 
-  /** Opens the teleprompter at the open entry, once all text is saved. */
+  /** Switches views, keeping the place in the script (v3 spec §4.2). */
+  function switchView(to: ScriptView) {
+    if (to === view) return;
+    const id = entryAfterSwitch(to, {
+      selectedId: selected?.id,
+      cursorId,
+      topId,
+    });
+    leave();
+    commitTitles();
+    if (id) setSelectedId(id);
+    setScrollTarget(to === "full" && id ? { id, smooth: false } : undefined);
+    setCursorId(undefined);
+    setView(to);
+    startTransition(() => setScriptViewAction(to));
+  }
+
+  /**
+   * Opens the teleprompter, once all text is saved: at the open entry in
+   * Sections, or at the cursor's entry (else the start) in Full script.
+   */
   async function openTeleprompter() {
-    if (!selected || !canRead) return;
+    if (!canRead) return;
     // Fullscreen needs the click itself, so it comes before any waiting.
     enterFullscreen(document);
-    commitTitle(selected.id);
+    commitTitles();
     await Promise.all([...pending.current.keys()].map(flush));
     markOpenedFromScript(projectId);
-    router.push(`/projects/${projectId}/teleprompter?entry=${selected.id}`);
+    const entry = teleprompterEntry(view, {
+      selectedId: selected?.id,
+      cursorId,
+    });
+    router.push(
+      `/projects/${projectId}/teleprompter${entry ? `?entry=${entry}` : ""}`,
+    );
   }
 
   function open(id: string) {
+    if (full) {
+      setSelectedId(id);
+      setScrollTarget({ id, smooth: true });
+      return;
+    }
     leave();
     setSelectedId(id);
   }
@@ -229,6 +417,10 @@ export function ScriptEditor({
     leave();
     const id = await addSectionAction(projectId, kind);
     setSelectedId(id);
+    if (full) {
+      setScrollTarget({ id, smooth: true });
+      setFocusId(id);
+    }
   }
 
   async function addSub(mainId: string) {
@@ -236,6 +428,7 @@ export function ScriptEditor({
     const id = await addSubsectionAction(mainId);
     setFreshId(id);
     setSelectedId(id);
+    if (full) setScrollTarget({ id, smooth: true });
   }
 
   function rename(id: string, title: string) {
@@ -270,14 +463,79 @@ export function ScriptEditor({
       const rest = sections.filter((x) => x.id !== s.id && x.parent !== s.id);
       setSelectedId(rest[0]?.id);
     }
+    if (
+      cursorEntry &&
+      (cursorEntry.id === s.id || cursorEntry.parent === s.id)
+    ) {
+      setCursorId(undefined);
+    }
     startTransition(() => removeSectionAction(s.id));
   }
+
+  const teleprompterTip = !canRead
+    ? "Nothing to read yet · Write something in any section first"
+    : full
+      ? cursorEntry
+        ? `Starts at “${entryName(shown(cursorEntry))}” · Click into another section to start there`
+        : "Starts at the beginning · Click into a section to start there"
+      : `Starts at “${selected ? entryName(selected) : ""}” · Select another entry in the outline to start there`;
+
+  // The sticky header: toggle, emphasis, ▷ Teleprompter and Image.
+  const tools = (
+    <>
+      <ViewToggle view={view} onChange={switchView} />
+      <EmphasisToolbar editor={editor} />
+      <span className="group relative shrink-0">
+        <button
+          type="button"
+          aria-disabled={!canRead}
+          aria-describedby="teleprompter-tip"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={openTeleprompter}
+          className={`flex items-center gap-2 rounded-xl border border-accent/60 bg-accent/10 px-3 py-2 font-bold font-heading text-[13px] text-accent-glow tracking-[0.78px] ${
+            canRead ? "hover:bg-accent/15" : "cursor-not-allowed opacity-40"
+          }`}
+        >
+          <span aria-hidden className="text-[11px]">
+            ▷
+          </span>
+          Teleprompter
+        </button>
+        <span
+          id="teleprompter-tip"
+          role="tooltip"
+          className="pointer-events-none absolute top-full right-0 z-20 mt-2 hidden w-max max-w-[300px] rounded-lg border border-border-strong bg-surface-3 px-3 py-2 font-label text-[12px] text-fg-muted leading-snug shadow-[0_10px_30px_rgb(0_0_0/0.55)] group-focus-within:block group-hover:block"
+        >
+          {teleprompterTip}
+        </span>
+      </span>
+      <button
+        type="button"
+        disabled={!editor}
+        title={editor ? undefined : "Click into a section first"}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => insertStageDirection(editor)}
+        className="flex shrink-0 items-center gap-2 rounded-xl border border-amber/60 bg-amber/10 px-3 py-2 font-bold font-heading text-[13px] text-amber tracking-[0.78px] hover:bg-amber/15 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-amber/10"
+      >
+        <Image
+          src="/design/icon-image-button.svg"
+          alt=""
+          width={17}
+          height={17}
+        />
+        Image
+        <kbd className="rounded-[5px] bg-canvas px-1.5 py-0.5 font-label font-medium text-[11px] text-fg-muted tracking-normal">
+          Alt+I
+        </kbd>
+      </button>
+    </>
+  );
 
   return (
     <div className="flex items-start gap-5">
       <Outline
         sections={sections.map(shown)}
-        selectedId={selected?.id}
+        selectedId={currentId}
         missing={missing}
         totalWords={totalWords}
         rate={rate}
@@ -297,7 +555,34 @@ export function ScriptEditor({
         aria-label="Writing area"
         className="min-w-0 flex-1 rounded-[18px] border border-border-soft bg-surface-1 px-10 pt-6 pb-10"
       >
-        {selected ? (
+        {!selected ? (
+          <p className="pt-4 text-[17px] text-fg-muted italic">
+            This script has no sections. Add one from the outline.
+          </p>
+        ) : full ? (
+          <>
+            {/* Stays in view while the script scrolls (v3 spec §4.1). */}
+            <div
+              ref={header}
+              className="sticky top-0 z-10 -mx-10 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 bg-surface-1 px-10 pt-2 pb-3.5"
+            >
+              {tools}
+            </div>
+            <FullScript
+              sections={sections.map(shown)}
+              columnRef={column}
+              initialOf={(s) => docOf(s) as JSONContent}
+              freshId={freshId}
+              onFresh={() => setFreshId(null)}
+              onChange={change}
+              onFlush={(id) => void flush(id)}
+              onCursor={setCursorId}
+              onEditor={registerEditor}
+              onRename={rename}
+              onCommitTitle={commitTitle}
+            />
+          </>
+        ) : (
           <>
             {selected.parent && (
               <p className="pb-2 font-label text-[12px] text-fg-muted">
@@ -305,7 +590,7 @@ export function ScriptEditor({
               </p>
             )}
             {/* Stays in view while a long section scrolls (v3 spec §4.1). */}
-            <div className="sticky top-0 z-10 -mx-10 flex items-center gap-3 bg-surface-1 px-10 pt-2 pb-3.5">
+            <div className="sticky top-0 z-10 -mx-10 flex flex-wrap items-center gap-x-3 gap-y-2 bg-surface-1 px-10 pt-2 pb-3.5">
               {selected.parent ? (
                 <input
                   key={`title-${selected.id}`}
@@ -324,59 +609,14 @@ export function ScriptEditor({
                   autoFocus={freshId === selected.id}
                   placeholder="Untitled"
                   aria-label="Subsection title"
-                  className="-mx-1.5 min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1.5 font-semibold text-[34px] text-fg outline-none placeholder:text-fg-faint placeholder:italic hover:border-border-soft focus:border-accent focus:bg-surface-2"
+                  className="-mx-1.5 min-w-0 flex-1 basis-[240px] rounded-lg border border-transparent bg-transparent px-1.5 font-semibold text-[34px] text-fg outline-none placeholder:text-fg-faint placeholder:italic hover:border-border-soft focus:border-accent focus:bg-surface-2"
                 />
               ) : (
-                <h2 className="min-w-0 flex-1 font-semibold text-[34px] text-fg">
+                <h2 className="min-w-0 flex-1 basis-[240px] font-semibold text-[34px] text-fg">
                   {entryName(selected)}
                 </h2>
               )}
-              <EmphasisToolbar editor={editor} />
-              <span className="group relative shrink-0">
-                <button
-                  type="button"
-                  aria-disabled={!canRead}
-                  aria-describedby="teleprompter-tip"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={openTeleprompter}
-                  className={`flex items-center gap-2 rounded-xl border border-accent/60 bg-accent/10 px-3 py-2 font-bold font-heading text-[13px] text-accent-glow tracking-[0.78px] ${
-                    canRead
-                      ? "hover:bg-accent/15"
-                      : "cursor-not-allowed opacity-40"
-                  }`}
-                >
-                  <span aria-hidden className="text-[11px]">
-                    ▷
-                  </span>
-                  Teleprompter
-                </button>
-                <span
-                  id="teleprompter-tip"
-                  role="tooltip"
-                  className="pointer-events-none absolute top-full right-0 z-20 mt-2 hidden w-max max-w-[300px] rounded-lg border border-border-strong bg-surface-3 px-3 py-2 font-label text-[12px] text-fg-muted leading-snug shadow-[0_10px_30px_rgb(0_0_0/0.55)] group-focus-within:block group-hover:block"
-                >
-                  {canRead
-                    ? `Starts at “${entryName(selected)}” · Select another entry in the outline to start there`
-                    : "Nothing to read yet · Write something in any section first"}
-                </span>
-              </span>
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => insertStageDirection(editor)}
-                className="flex shrink-0 items-center gap-2 rounded-xl border border-amber/60 bg-amber/10 px-3 py-2 font-bold font-heading text-[13px] text-amber tracking-[0.78px] hover:bg-amber/15"
-              >
-                <Image
-                  src="/design/icon-image-button.svg"
-                  alt=""
-                  width={17}
-                  height={17}
-                />
-                Image
-                <kbd className="rounded-[5px] bg-canvas px-1.5 py-0.5 font-label font-medium text-[11px] text-fg-muted tracking-normal">
-                  Alt+I
-                </kbd>
-              </button>
+              {tools}
             </div>
             <div className="mb-3.5 flex items-center gap-[18px] rounded-[10px] bg-surface-2 px-3.5 py-2 font-label font-medium text-fg-muted text-xs">
               <span className="flex items-center gap-1.5">
@@ -422,13 +662,9 @@ export function ScriptEditor({
               }
               onChange={(doc) => change(selected.id, doc)}
               onBlur={() => void flush(selected.id)}
-              onEditor={setEditor}
+              onEditor={(e) => registerEditor(selected.id, e)}
             />
           </>
-        ) : (
-          <p className="pt-4 text-[17px] text-fg-muted italic">
-            This script has no sections. Add one from the outline.
-          </p>
         )}
       </section>
     </div>

@@ -3,6 +3,7 @@ import type { Readable } from "node:stream";
 import { io } from "next/cache";
 import { v7 as uuidv7 } from "uuid";
 import type { BoardMove } from "@/lib/board";
+import type { ScriptView } from "@/lib/script-view";
 import type { SourceValues } from "@/lib/sources";
 import * as backupQueries from "./backup";
 import * as brollQueries from "./broll";
@@ -401,6 +402,16 @@ export async function getDescriptionFooter() {
 export async function setDescriptionFooter(footer: string) {
   await io();
   metaQueries.setDescriptionFooter(getDb(), footer);
+}
+
+export async function getScriptView() {
+  await io();
+  return metaQueries.getScriptView(getDb());
+}
+
+export async function setScriptView(view: ScriptView) {
+  await io();
+  metaQueries.setScriptView(getDb(), view);
 }
 
 export async function getTeleprompterSettings() {

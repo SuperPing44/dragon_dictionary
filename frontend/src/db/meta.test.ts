@@ -2,9 +2,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { type Db, openDb } from "./connection";
 import {
   getDescriptionFooter,
+  getScriptView,
   getSpeakingRate,
   getTeleprompterSettings,
   setDescriptionFooter,
+  setMeta,
+  setScriptView,
   setSpeakingRate,
   setTeleprompterSpeedLevel,
   setTeleprompterTextSize,
@@ -80,5 +83,26 @@ describe("description footer", () => {
     expect(getDescriptionFooter(db)).toBe(footer);
     setDescriptionFooter(db, "");
     expect(getDescriptionFooter(db)).toBe("");
+  });
+});
+
+describe("script view", () => {
+  it("is Sections the very first time", () => {
+    expect(getScriptView(db)).toBe("sections");
+  });
+
+  it("remembers the view last used", () => {
+    setScriptView(db, "full");
+    expect(getScriptView(db)).toBe("full");
+    setScriptView(db, "sections");
+    expect(getScriptView(db)).toBe("sections");
+  });
+
+  it("rejects anything else, and reads an unknown stored value as Sections", () => {
+    // @ts-expect-error: not a view
+    expect(() => setScriptView(db, "pages")).toThrow();
+    expect(getScriptView(db)).toBe("sections");
+    setMeta(db, "script_view", "pages");
+    expect(getScriptView(db)).toBe("sections");
   });
 });
