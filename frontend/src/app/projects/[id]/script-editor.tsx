@@ -28,6 +28,7 @@ import {
   markOpenedFromScript,
   takeReadingEntry,
 } from "@/lib/teleprompter-return";
+import { EmphasisToolbar } from "./emphasis-toolbar";
 import { EntryEditor } from "./entry-editor";
 import {
   addSectionAction,
@@ -303,7 +304,8 @@ export function ScriptEditor({
                 Main part › subsection
               </p>
             )}
-            <div className="flex items-center gap-3 pb-3.5">
+            {/* Stays in view while a long section scrolls (v3 spec §4.1). */}
+            <div className="sticky top-0 z-10 -mx-10 flex items-center gap-3 bg-surface-1 px-10 pt-2 pb-3.5">
               {selected.parent ? (
                 <input
                   key={`title-${selected.id}`}
@@ -329,6 +331,7 @@ export function ScriptEditor({
                   {entryName(selected)}
                 </h2>
               )}
+              <EmphasisToolbar editor={editor} />
               <span className="group relative shrink-0">
                 <button
                   type="button"

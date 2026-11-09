@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Script emphasis: bold, italic and underline with Ctrl+B / Ctrl+I / Ctrl+U or the new B / I / U buttons in the writing-area header, which show when a mark is active. The header now stays in view while a long section scrolls. Emphasis shows in the teleprompter too, and stage directions keep their own look. Strikethrough is turned off; old strikethrough is dropped and its text kept (#63).
+
 ## [0.5.0] - 2026-11-07
 
 The Archive, as specified in [`docs/spec/v2.md`](docs/spec/v2.md) §5.4. Its migration runs at startup, with a backup taken first.
