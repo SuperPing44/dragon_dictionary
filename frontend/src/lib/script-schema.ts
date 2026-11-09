@@ -7,6 +7,8 @@ import StarterKit from "@tiptap/starter-kit";
  * rules, shortcuts, the chip's node view) is added in the editor.
  */
 export const ScriptStarterKit = StarterKit.configure({
+  // Emphasis is bold, italic and underline only (v3 spec §4.1).
+  strike: false,
   heading: false,
   codeBlock: false,
   blockquote: false,

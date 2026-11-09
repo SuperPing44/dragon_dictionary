@@ -154,6 +154,29 @@ describe("renderEntry", () => {
     );
     expect(html).toBe("<p>Wolves.</p>");
   });
+
+  it("renders bold, italic and underline", () => {
+    const html = renderToStaticMarkup(
+      renderEntry({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "Never", marks: [{ type: "bold" }] },
+              { type: "text", text: " " },
+              { type: "text", text: "ever", marks: [{ type: "italic" }] },
+              { type: "text", text: " " },
+              { type: "text", text: "again", marks: [{ type: "underline" }] },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(html).toBe(
+      "<p><strong>Never</strong> <em>ever</em> <u>again</u></p>",
+    );
+  });
 });
 
 describe("speed and size", () => {

@@ -60,6 +60,28 @@ describe("parseDoc", () => {
     });
     expect(parseDoc("not json")).toEqual({ type: "doc" });
   });
+
+  it("drops strikethrough, keeping its text and the other marks", () => {
+    const stored = doc(
+      p(
+        { ...t("Old"), marks: [{ type: "strike" }] },
+        { ...t(" and loud"), marks: [{ type: "strike" }, { type: "bold" }] },
+      ),
+    );
+    expect(parseDoc(JSON.stringify(stored))).toEqual(
+      doc(p(t("Old"), { ...t(" and loud"), marks: [{ type: "bold" }] })),
+    );
+  });
+
+  it("keeps bold, italic and underline", () => {
+    const stored = doc(
+      p({
+        ...t("Ragnarök"),
+        marks: [{ type: "bold" }, { type: "italic" }, { type: "underline" }],
+      }),
+    );
+    expect(parseDoc(JSON.stringify(stored))).toEqual(stored);
+  });
 });
 
 describe("canonicalInsertIndex", () => {
