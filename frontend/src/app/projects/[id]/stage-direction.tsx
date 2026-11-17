@@ -113,7 +113,7 @@ function StageDirectionChip({
     <NodeViewWrapper
       as="span"
       contentEditable={false}
-      className={`mx-0.5 inline-flex items-center gap-1.5 rounded-lg py-[3px] pr-2.5 pl-2 align-[0.1em] font-label font-medium text-[14px] text-amber leading-normal transition-shadow ${
+      className={`mx-0.5 inline-flex items-center gap-1.5 rounded-lg py-[3px] pr-2.5 pl-2 align-[0.1em] font-label font-medium text-[14px] not-italic text-amber leading-normal transition-shadow ${
         editing || selected
           ? "border-[1.5px] border-amber bg-amber/15 shadow-[0_0_6px_rgb(242_168_59/0.5)]"
           : "border border-amber/45 bg-amber/10"

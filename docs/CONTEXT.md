@@ -61,6 +61,9 @@ Idea → Research → Script → Recording → Editing → Thumbnail → Upload 
 - Sections can be added, removed and reordered.
 - **Stage directions** sit directly in the text. There is only one kind: **show image**, e.g. "[Image: map of Scandinavia]". They are visually distinct from the spoken text.
 - Optional: an **estimated speaking time** per section and for the whole script, calculated from the word count. Stage directions are not counted.
+- **Emphasis:** text can be made bold, italic or underlined to mark how it is spoken. It shows in the editor, the teleprompter and the PDF.
+- Two views: **Sections** (one section at a time) and **Full script** (all sections in one continuous column), switched by a toggle.
+- **Script PDF:** the script can be exported as a clean, printable PDF to read or proofread.
 
 ### 5.3 Source Management *(MVP)*
 - Supported source types: **websites, books, PDFs, YouTube videos, scientific papers**
@@ -108,9 +111,12 @@ The fields that go to YouTube (title options, thumbnail drafts, tags, descriptio
 | v2 (`0.3.0`) | Video project with title options, thumbnails, tags, description, editing notes, B-roll |
 | v2 (`0.4.0`) | Kanban board with the video lifecycle |
 | v2 (`0.5.0`) | Archive of published videos with YouTube link |
+| v3 (`0.6.0`) | Emphasis: bold, italic and underline in the script |
+| v3 (`0.7.0`) | Full script view next to the Sections view |
+| v3 (`0.8.0`) | Script PDF export |
 | Later | Possible YouTube integration (deliberately left open) |
 
-The MVP is specified in [`spec/mvp-v1.md`](spec/mvp-v1.md), v2 in [`spec/v2.md`](spec/v2.md).
+The MVP is specified in [`spec/mvp-v1.md`](spec/mvp-v1.md), v2 in [`spec/v2.md`](spec/v2.md), v3 in [`spec/v3.md`](spec/v3.md).
 
 ## 7. Out of Scope (Non-Goals)
 
@@ -150,3 +156,7 @@ The MVP is specified in [`spec/mvp-v1.md`](spec/mvp-v1.md), v2 in [`spec/v2.md`]
 | **B-roll list** | The images and clips a video needs: its script's stage directions plus extra items, each ticked off once found |
 | **Extra item** | A B-roll list entry added by hand because it has no stage direction in the script |
 | **Teleprompter** | Full-screen, keyboard-controlled view that scrolls the script for reading it aloud |
+| **Emphasis** | Bold, italic or underline on script text, marking how a passage is spoken |
+| **Sections** (view) | The script editor view showing one section at a time, picked in the outline |
+| **Full script** | The script editor view showing all sections one after another in a single continuous column |
+| **Script PDF** | A printable copy of a script: title, section headings, text with emphasis and stage directions, nothing else |

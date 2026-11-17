@@ -6,8 +6,26 @@ export type DocNode = {
   type?: string;
   text?: string;
   attrs?: Record<string, unknown>;
+  marks?: { type: string; attrs?: Record<string, unknown> }[];
   content?: DocNode[];
 };
+
+/**
+ * Marks the script schema no longer has. Stored text may still carry them
+ * (strikethrough was on before 0.6.0); they're dropped, the text kept.
+ */
+const RETIRED_MARKS = new Set(["strike"]);
+
+function dropRetiredMarks(node: DocNode): DocNode {
+  const next: DocNode = { ...node };
+  if (node.marks) {
+    const marks = node.marks.filter((m) => !RETIRED_MARKS.has(m.type));
+    if (marks.length) next.marks = marks;
+    else delete next.marks;
+  }
+  if (node.content) next.content = node.content.map(dropRetiredMarks);
+  return next;
+}
 
 /** Inline nodes that are never spoken, so never counted as words. */
 const UNSPOKEN = new Set(["stageDirection"]);
@@ -60,11 +78,16 @@ export function hasContent(doc: DocNode): boolean {
   return countWords(doc) > 0 || hasNode(doc, "stageDirection");
 }
 
-/** Parses stored section content; anything unreadable counts as empty. */
+/**
+ * Parses stored section content; anything unreadable counts as empty.
+ * Retired marks are dropped, so the editor and renderers can read it.
+ */
 export function parseDoc(content: string): DocNode {
   try {
     const doc = JSON.parse(content);
-    return doc && typeof doc === "object" ? doc : { type: "doc" };
+    return doc && typeof doc === "object"
+      ? dropRetiredMarks(doc)
+      : { type: "doc" };
   } catch {
     return { type: "doc" };
   }

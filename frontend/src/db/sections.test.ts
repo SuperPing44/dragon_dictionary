@@ -56,6 +56,22 @@ describe("saveSectionContent", () => {
     expect(getVideoProject(db, projectId)?.updated).toBe(now.toISOString());
   });
 
+  it("keeps emphasis and drops strikethrough", () => {
+    const hook = sectionOf("hook");
+    const para = (...content: object[]) =>
+      JSON.stringify({
+        type: "doc",
+        content: [{ type: "paragraph", content }],
+      });
+    const bold = { type: "text", text: "Doom", marks: [{ type: "bold" }] };
+    const struck = { type: "text", text: " soon", marks: [{ type: "strike" }] };
+    expect(saveSectionContent(db, hook, para(bold, struck))).toBe(2);
+    const saved = listSections(db, projectId).find((s) => s.id === hook);
+    expect(JSON.parse(saved?.content ?? "")).toEqual(
+      JSON.parse(para(bold, { type: "text", text: " soon" })),
+    );
+  });
+
   it("rejects content that isn't a document", () => {
     expect(() => saveSectionContent(db, sectionOf("hook"), "[]")).toThrow();
   });

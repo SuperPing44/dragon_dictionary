@@ -9,8 +9,10 @@ import {
   reorderSections,
   type SectionKind,
   saveSectionContent,
+  setScriptView,
   setSpeakingRate,
 } from "@/db";
+import type { ScriptView } from "@/lib/script-view";
 
 /**
  * Autosave: stores the text and returns its word count. Refreshing keeps the
@@ -57,4 +59,9 @@ export async function reorderAction(
 ) {
   await reorderSections(projectId, parent, orderedIds);
   refresh();
+}
+
+/** Remembers the Script tab's view for every project. */
+export async function setScriptViewAction(view: ScriptView) {
+  await setScriptView(view);
 }
