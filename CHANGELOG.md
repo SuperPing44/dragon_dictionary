@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-25
+
+A security patch release.
+
+### Security
+
+- Next.js upgraded from 16.4.2 to 16.4.6, which fixes a published security advisory. No changes to the app itself (#66).
+
 ## [0.8.0] - 2026-11-17
 
 The Script PDF, as specified in [`docs/spec/v3.md`](docs/spec/v3.md) §4.3.
@@ -96,7 +104,8 @@ MVP v1, as specified in [`docs/spec/mvp-v1.md`](docs/spec/mvp-v1.md).
 - Automatic backups to OneDrive: on start, before migrations and on demand, with the status shown in the sidebar.
 - Daily copy started from a desktop shortcut, plus an update script.
 
-[Unreleased]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/SuperPing44/dragon_dictionary/compare/v0.5.0...v0.6.0
